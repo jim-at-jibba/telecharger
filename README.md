@@ -1,19 +1,35 @@
-# bubbletea-app-template
+<h1 align="center">Welcome to telecharger 👋</h1>
+<p>
+  <a href="https://www.npmjs.com/package/telecharger" target="_blank">
+    <img alt="Version" src="https://img.shields.io/npm/v/telecharger.svg">
+  </a>
+  <a href="https://twitter.com/jimgbest" target="_blank">
+    <img alt="Twitter: jimgbest" src="https://img.shields.io/twitter/follow/jimgbest.svg?style=social" />
+  </a>
+</p>
 
-A template repository to create [Bubbletea][bubbletea] apps.
+> Youtube DL TUI
 
-## Included
+## Install
 
-- a sample app that does nothing, so it includes all dependencies:
-	- [bubbletea][]
-	- [bubbles][]
-	- [lipgloss][]
-- github actions workflows for build, test, lint and release
-- [GoReleaser][goreleaser] configs
-- [golangci-lint][lint] configs
+```sh
+go install github.com/jim-at-jibba/telecharger@latest
+```
 
-[bubbletea]: https://github.com/charmbracelet/bubbletea
-[bubbles]: https://github.com/charmbracelet/bubbles
-[lipgloss]: https://github.com/charmbracelet/lipgloss
-[goreleaser]: https://goreleaser.com
-[lint]: https://golangci-lint.run
+## Usage
+
+```sh
+telecharger
+```
+
+## Author
+
+👤 **James Best**
+
+- Website: jamesbest.uk
+- Twitter: [@jimgbest](https://twitter.com/jimgbest)
+- Github: [@jim-at-jibba](https://github.com/jim-at-jibba)
+
+## Show your support
+
+Give a ⭐️ if this project helped you!
