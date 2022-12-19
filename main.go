@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"os"
+	"strconv"
 
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/list"
@@ -95,10 +96,15 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 
 	case tea.KeyMsg:
-		switch msg.String() {
-		case "ctrl+c", "q":
-			m.quitting = true
-			return m, tea.Quit
+		switch msg.Type {
+		case tea.KeyRunes:
+		case tea.KeyCtrlC, tea.KeyEsc:
+			cmd = tea.Quit
+			return m, cmd
+		case tea.KeyEnter:
+			selectedItem := m.queue.SelectedItem()
+			item := selectedItem.(QueueItem)
+			m.queueItemDetails = QueueItem{id: item.id, videoId: item.videoId, outputName: item.outputName, embedThumbnail: item.embedThumbnail, audioOnly: item.audioOnly, audioFormat: item.audioFormat}
 		}
 	case errMsg:
 		m.err = msg
@@ -137,13 +143,17 @@ func (m model) queueView() string {
 }
 
 func (m model) queueItemDetailsView() string {
-	name := fmt.Sprintf("Name: %s\n", m.queueItemDetails.outputName)
-	videoId := fmt.Sprintf("Video Id: %s\n", m.queueItemDetails.videoId)
+	videoId := fmt.Sprintf("Video Id: %s", m.queueItemDetails.videoId)
+	outputName := fmt.Sprintf("Outname: %s", m.queueItemDetails.outputName)
+	audioFormat := fmt.Sprintf("AudioFormat: %s", m.queueItemDetails.audioFormat)
+	audioOnly := fmt.Sprintf("AudioOnly: %s", strconv.FormatBool(m.queueItemDetails.audioOnly))
 	return detailsViewStyle.Render(
 		lipgloss.JoinVertical(
 			lipgloss.Left,
+			outputName,
 			videoId,
-			name,
+			audioFormat,
+			audioOnly,
 		),
 	)
 }
