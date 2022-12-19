@@ -91,33 +91,27 @@ func (m model) Init() tea.Cmd {
 }
 
 func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	var cmd tea.Cmd
 	switch msg := msg.(type) {
 
 	case tea.KeyMsg:
-		if key.Matches(msg, quitKeys) {
+		switch msg.String() {
+		case "ctrl+c", "q":
 			m.quitting = true
 			return m, tea.Quit
-
 		}
-		return m, nil
 	case errMsg:
 		m.err = msg
 		return m, nil
 
 	case tea.WindowSizeMsg:
-		// h, _ := listViewStyle.GetFrameSize()
-		// v := nameStyle.GetHeight()
 		m.width, m.height = msg.Width, msg.Height
-		// m.queue.SetSize(msg.Width-h, msg.Height-v)
 		m.queue.SetSize(msg.Width/3, msg.Height/3)
 		return m, nil
-
-	default:
-		var cmd tea.Cmd
-		m.queue, _ = m.queue.Update(msg)
-		m.spinner, cmd = m.spinner.Update(msg)
-		return m, cmd
 	}
+	m.queue, _ = m.queue.Update(msg)
+	m.spinner, cmd = m.spinner.Update(msg)
+	return m, cmd
 }
 
 // VIEWS START

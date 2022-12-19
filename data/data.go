@@ -2,7 +2,6 @@ package data
 
 import (
 	"database/sql"
-	"fmt"
 	"log"
 
 	_ "github.com/mattn/go-sqlite3"
@@ -49,7 +48,6 @@ func CreateQueueTable() {
 	}
 
 	statement.Exec()
-	log.Println("Queue table create")
 }
 
 func InsertQueueItem(word, definition, category string) {
@@ -89,7 +87,6 @@ func GetAllQueueItems() ([]*QueueItem, error) {
 			&queueItem.AudioFormat,
 			&queueItem.Status,
 		)
-		fmt.Printf("Item %+v\n", queueItem)
 
 		queueItems = append(queueItems, &queueItem)
 	}
