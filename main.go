@@ -2,16 +2,24 @@ package main
 
 import (
 	"fmt"
+	"io/ioutil"
 	"os"
+	"os/exec"
 	"strconv"
 
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/list"
 	"github.com/charmbracelet/bubbles/spinner"
+	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/jim-at-jibba/telecharger/data"
+	"github.com/muesli/reflow/wordwrap"
 )
+
+const useHighPerformanceRenderer = false
+
+var widthDivisor = 2
 
 var (
 	containerNugget = lipgloss.NewStyle().
@@ -56,9 +64,75 @@ type model struct {
 
 	queue            list.Model
 	queueItemDetails QueueItem
+	viewport         viewport.Model
+	downloadOutput   string
+	startingDownload bool
 	spinner          spinner.Model
 	quitting         bool
 	err              error
+	ready            bool
+}
+
+type downloadFinished struct {
+	content string
+}
+
+// func capture() func() (string, error) {
+// 	r, w, err := os.Pipe()
+// 	if err != nil {
+// 		panic(err)
+// 	}
+//
+// 	done := make(chan error, 1)
+//
+// 	save := os.Stdout
+// 	os.Stdout = w
+//
+// 	var buf strings.Builder
+//
+// 	go func() {
+// 		_, err := io.Copy(&buf, r)
+// 		r.Close()
+// 		done <- err
+// 	}()
+//
+// 	return func() (string, error) {
+// 		os.Stdout = save
+// 		w.Close()
+// 		err := <-done
+// 		return buf.String(), err
+// 	}
+// }
+
+func (m model) executeDownload() tea.Cmd {
+	return func() tea.Msg {
+		// command := `youtube-dl https://www.youtube.com/watch?v=J38Yq85ZoyY`
+		cmd := exec.Command("youtube-dl", "-x", "https://www.youtube.com/watch?v=J38Yq85ZoyY") //nolint:gosec
+		rescueStdout := os.Stdout
+		r, w, _ := os.Pipe()
+		os.Stdout = w
+
+		cmd.Stdin = os.Stdin
+		cmd.Stdout = os.Stdout
+		err := cmd.Run()
+
+		w.Close()
+		out, _ := ioutil.ReadAll(r)
+		os.Stdout = rescueStdout
+
+		m.downloadOutput = string(out)
+		if err != nil {
+			fmt.Println(err)
+		}
+
+		return downloadFinished{
+			content: string(out),
+		}
+	}
+	// return tea.ExecProcess(c, func(err error) tea.Msg {
+	// 	fmt.Println(err)
+	// 	return nil
+	// })
 }
 
 var quitKeys = key.NewBinding(
@@ -92,10 +166,19 @@ func (m model) Init() tea.Cmd {
 }
 
 func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
-	var cmd tea.Cmd
+	var (
+		cmd  tea.Cmd
+		cmds []tea.Cmd
+	)
 	switch msg := msg.(type) {
 
 	case tea.KeyMsg:
+		switch msg.String() {
+		case "q":
+			return m, tea.Quit
+		case "d":
+			return m, m.executeDownload()
+		}
 		switch msg.Type {
 		case tea.KeyRunes:
 		case tea.KeyCtrlC, tea.KeyEsc:
@@ -111,20 +194,36 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, nil
 
 	case tea.WindowSizeMsg:
-		m.width, m.height = msg.Width, msg.Height
-		m.queue.SetSize(msg.Width/3, msg.Height/3)
+		if !m.ready {
+			m.width, m.height = msg.Width, msg.Height
+			m.queue.SetSize(msg.Width/widthDivisor, msg.Height/5)
+			m.viewport = viewport.New(msg.Width, msg.Height/7)
+			m.viewport.HighPerformanceRendering = useHighPerformanceRenderer
+			m.viewport.SetContent(m.downloadOutput)
+			m.ready = true
+
+		} else {
+			m.viewport.Width = msg.Width
+			m.viewport.Height = msg.Height / 7
+		}
 		return m, nil
+
+	case downloadFinished:
+		m.downloadOutput = msg.content
+
+		m.viewport.SetContent(wordwrap.String(m.downloadOutput, m.width/widthDivisor-10))
 	}
 	m.queue, _ = m.queue.Update(msg)
 	m.spinner, cmd = m.spinner.Update(msg)
-	return m, cmd
+	cmds = append(cmds, cmd)
+	m.viewport, cmd = m.viewport.Update(msg)
+	cmds = append(cmds, cmd)
+	return m, tea.Batch(cmds...)
 }
 
 // VIEWS START
 func (m model) nameView() string {
-	h, _ := nameStyle.GetFrameSize()
-
-	name := nameStyle.Width(m.width - h).Render(`
+	name := nameStyle.Width(m.width).Render(`
   _       _           _
  | |     | |         | |
  | |_ ___| | ___  ___| |__   __ _ _ __ __ _  ___ _ __
@@ -158,6 +257,18 @@ func (m model) queueItemDetailsView() string {
 	)
 }
 
+func max(a, b int) int {
+	if a > b {
+		return a
+	}
+	return b
+}
+
+func (m model) footerView() string {
+	info := detailsViewStyle.Render(fmt.Sprintf("%3.f%%", m.viewport.ScrollPercent()*100))
+	return lipgloss.JoinHorizontal(lipgloss.Center, info)
+}
+
 func (m model) View() string {
 	if m.err != nil {
 		return m.err.Error()
@@ -165,9 +276,13 @@ func (m model) View() string {
 	if m.quitting {
 		return "Exiting...\n"
 	}
+	if !m.ready {
+		return "\n  Initializing..."
+	}
 	return lipgloss.JoinVertical(lipgloss.Left,
 		m.nameView(),
 		lipgloss.JoinHorizontal(lipgloss.Left,
+
 			containerStyle.Render(
 				lipgloss.JoinVertical(lipgloss.Left,
 					m.queueView(),
@@ -180,6 +295,15 @@ func (m model) View() string {
 					m.queue.View(),
 					titleStyle.Margin(1, 2).Render("Details"),
 					m.queueItemDetailsView(),
+				),
+			),
+		),
+		containerStyle.Width(m.width/widthDivisor).Render(
+			detailsViewStyle.Render(
+				lipgloss.JoinVertical(lipgloss.Left,
+					titleStyle.Margin(1, 2).Render("Download status"),
+					m.viewport.View(),
+					m.footerView(),
 				),
 			),
 		),
