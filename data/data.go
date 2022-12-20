@@ -65,8 +65,8 @@ func InsertQueueItem(word, definition, category string) {
 	log.Println("Inserted study note successfully")
 }
 
-func GetAllQueueItems() ([]*QueueItem, error) {
-	row, err := db.Query("SELECT * FROM queue")
+func GetAllQueueItems(status string) ([]*QueueItem, error) {
+	row, err := db.Query("SELECT * FROM queue WHERE Status = $1", status)
 	if err != nil {
 		log.Fatal(err)
 	}

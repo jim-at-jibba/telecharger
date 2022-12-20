@@ -65,6 +65,8 @@ type model struct {
 
 	queue            list.Model
 	queueItemDetails QueueItem
+	done             list.Model
+	doneItemDetails  QueueItem
 	viewport         viewport.Model
 	downloadOutput   string
 	startingDownload bool
@@ -77,33 +79,6 @@ type model struct {
 type downloadFinished struct {
 	content string
 }
-
-// func capture() func() (string, error) {
-// 	r, w, err := os.Pipe()
-// 	if err != nil {
-// 		panic(err)
-// 	}
-//
-// 	done := make(chan error, 1)
-//
-// 	save := os.Stdout
-// 	os.Stdout = w
-//
-// 	var buf strings.Builder
-//
-// 	go func() {
-// 		_, err := io.Copy(&buf, r)
-// 		r.Close()
-// 		done <- err
-// 	}()
-//
-// 	return func() (string, error) {
-// 		os.Stdout = save
-// 		w.Close()
-// 		err := <-done
-// 		return buf.String(), err
-// 	}
-// }
 
 func (m model) executeDownload() tea.Cmd {
 	return func() tea.Msg {
@@ -130,10 +105,6 @@ func (m model) executeDownload() tea.Cmd {
 			content: string(out),
 		}
 	}
-	// return tea.ExecProcess(c, func(err error) tea.Msg {
-	// 	fmt.Println(err)
-	// 	return nil
-	// })
 }
 
 var quitKeys = key.NewBinding(
@@ -146,20 +117,37 @@ func initialModel() model {
 	s.Spinner = spinner.Dot
 	s.Style = lipgloss.NewStyle().Foreground(lipgloss.Color("205"))
 
-	queueItems, err := data.GetAllQueueItems()
+	queueItems, err := data.GetAllQueueItems("queued")
+	if err != nil {
+		fmt.Printf(err.Error())
+	}
+	if err != nil {
+		fmt.Printf(err.Error())
+	}
+	doneItems, err := data.GetAllQueueItems("completed")
 	if err != nil {
 		fmt.Printf(err.Error())
 	}
 
-	items := []list.Item{}
+	queueItemsList := []list.Item{}
 	for _, item := range queueItems {
-		items = append(items, QueueItem{id: item.Id, videoId: item.VideoId, outputName: item.OutputName, embedThumbnail: item.EmbedThumbnail, audioOnly: item.AudioOnly, audioFormat: item.AudioFormat})
+		queueItemsList = append(queueItemsList, QueueItem{id: item.Id, videoId: item.VideoId, outputName: item.OutputName, embedThumbnail: item.EmbedThumbnail, audioOnly: item.AudioOnly, audioFormat: item.AudioFormat})
 	}
 
-	l := list.New(items, list.NewDefaultDelegate(), 0, 0)
+	doneItemsList := []list.Item{}
+	for _, item := range doneItems {
+		doneItemsList = append(doneItemsList, QueueItem{id: item.Id, videoId: item.VideoId, outputName: item.OutputName, embedThumbnail: item.EmbedThumbnail, audioOnly: item.AudioOnly, audioFormat: item.AudioFormat})
+	}
+
+	l := list.New(queueItemsList, list.NewDefaultDelegate(), 0, 0)
 	l.Title = "Queued"
 
-	return model{spinner: s, queue: l, queueItemDetails: QueueItem{id: queueItems[0].Id, videoId: queueItems[0].VideoId, outputName: queueItems[0].OutputName, embedThumbnail: queueItems[0].EmbedThumbnail, audioOnly: queueItems[0].AudioOnly, audioFormat: queueItems[0].AudioFormat}}
+	dl := list.New(doneItemsList, list.NewDefaultDelegate(), 0, 0)
+	dl.Title = "Done"
+	return model{spinner: s,
+		queue: l,
+		done:  dl,
+	}
 }
 
 func (m model) Init() tea.Cmd {
@@ -198,6 +186,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if !m.ready {
 			m.width, m.height = msg.Width, msg.Height
 			m.queue.SetSize(msg.Width-10, msg.Height/5)
+			m.done.SetSize(msg.Width-10, msg.Height/5)
 			m.viewport = viewport.New(msg.Width, msg.Height/7)
 			m.viewport.HighPerformanceRendering = useHighPerformanceRenderer
 			m.viewport.SetContent(m.downloadOutput)
@@ -215,6 +204,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.viewport.SetContent(wordwrap.String(m.downloadOutput, m.width/widthDivisor-10))
 	}
 	m.queue, _ = m.queue.Update(msg)
+	m.done, _ = m.done.Update(msg)
 	m.spinner, cmd = m.spinner.Update(msg)
 	cmds = append(cmds, cmd)
 	m.viewport, cmd = m.viewport.Update(msg)
@@ -244,6 +234,10 @@ func (m model) queueView() string {
 	return listViewStyle.Render(m.queue.View())
 }
 
+func (m model) doneView() string {
+	return listViewStyle.Render(m.done.View())
+}
+
 func (m model) queueItemDetailsView() string {
 	videoId := fmt.Sprintf("Video Id: %s", m.queueItemDetails.videoId)
 	outputName := fmt.Sprintf("Outname: %s", m.queueItemDetails.outputName)
@@ -258,13 +252,6 @@ func (m model) queueItemDetailsView() string {
 			audioOnly,
 		),
 	)
-}
-
-func max(a, b int) int {
-	if a > b {
-		return a
-	}
-	return b
 }
 
 func (m model) footerView() string {
@@ -298,7 +285,7 @@ func (m model) View() string {
 			),
 			containerStyle.Width(twoWide).Render(
 				lipgloss.JoinVertical(lipgloss.Left,
-					m.queue.View(),
+					m.done.View(),
 					titleStyle.Render("Details"),
 					m.queueItemDetailsView(),
 				),
@@ -332,4 +319,11 @@ func main() {
 		fmt.Println(err)
 		os.Exit(1)
 	}
+}
+
+func max(a, b int) int {
+	if a > b {
+		return a
+	}
+	return b
 }
