@@ -2,7 +2,7 @@ package main
 
 import (
 	"fmt"
-	"io/ioutil"
+	"io"
 	"math"
 	"os"
 	"os/exec"
@@ -109,7 +109,7 @@ func (m model) executeDownload() tea.Cmd {
 		err := cmd.Run()
 
 		w.Close()
-		out, _ := ioutil.ReadAll(r)
+		out, _ := io.ReadAll(r)
 		os.Stdout = rescueStdout
 
 		m.downloadOutput = string(out)
