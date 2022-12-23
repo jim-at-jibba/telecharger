@@ -20,6 +20,13 @@ import (
 
 const useHighPerformanceRenderer = false
 
+type status int
+
+const (
+	queued status = iota
+	done
+)
+
 var widthDivisor = 2
 
 var (
@@ -28,6 +35,9 @@ var (
 			MarginRight(1)
 	containerStyle = containerNugget.Copy().
 			Border(lipgloss.RoundedBorder(), true)
+	focusedStyle = containerNugget.Copy().
+			Border(lipgloss.RoundedBorder(), true).
+			BorderForeground(lipgloss.Color("62"))
 	detailsViewStyle = lipgloss.NewStyle().PaddingLeft(2).
 				MarginRight(1)
 	listViewStyle = lipgloss.NewStyle()
@@ -63,9 +73,12 @@ func (i QueueItem) FilterValue() string { return i.outputName }
 type model struct {
 	width, height int
 
-	queue            list.Model
+	lists   []list.Model
+	focused status
+
+	// queue            list.Model
 	queueItemDetails QueueItem
-	done             list.Model
+	// done             list.Model
 	doneItemDetails  QueueItem
 	viewport         viewport.Model
 	downloadOutput   string
@@ -117,17 +130,40 @@ func initialModel() model {
 	s.Spinner = spinner.Dot
 	s.Style = lipgloss.NewStyle().Foreground(lipgloss.Color("205"))
 
+	return model{spinner: s}
+}
+
+func (m *model) Next() {
+	if m.focused == queued {
+		m.focused = done
+	} else {
+		m.focused = queued
+	}
+}
+
+func (m *model) Prev() {
+	if m.focused == queued {
+		m.focused = done
+	} else {
+		m.focused = queued
+	}
+}
+
+func (m *model) initLists(width, height int) {
 	queueItems, err := data.GetAllQueueItems("queued")
 	if err != nil {
-		fmt.Printf(err.Error())
+		fmt.Println(err.Error())
 	}
 	if err != nil {
-		fmt.Printf(err.Error())
+		fmt.Println(err.Error())
 	}
 	doneItems, err := data.GetAllQueueItems("completed")
 	if err != nil {
-		fmt.Printf(err.Error())
+		fmt.Println(err.Error())
 	}
+	defaultList := list.New([]list.Item{}, list.NewDefaultDelegate(), width-10, height/5)
+	defaultList.SetShowHelp(false)
+	m.lists = []list.Model{defaultList, defaultList}
 
 	queueItemsList := []list.Item{}
 	for _, item := range queueItems {
@@ -139,15 +175,10 @@ func initialModel() model {
 		doneItemsList = append(doneItemsList, QueueItem{id: item.Id, videoId: item.VideoId, outputName: item.OutputName, embedThumbnail: item.EmbedThumbnail, audioOnly: item.AudioOnly, audioFormat: item.AudioFormat})
 	}
 
-	l := list.New(queueItemsList, list.NewDefaultDelegate(), 0, 0)
-	l.Title = "Queued"
-
-	dl := list.New(doneItemsList, list.NewDefaultDelegate(), 0, 0)
-	dl.Title = "Done"
-	return model{spinner: s,
-		queue: l,
-		done:  dl,
-	}
+	m.lists[queued].Title = "Queued"
+	m.lists[queued].SetItems(queueItemsList)
+	m.lists[done].Title = "Done"
+	m.lists[done].SetItems(doneItemsList)
 }
 
 func (m model) Init() tea.Cmd {
@@ -174,9 +205,20 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			cmd = tea.Quit
 			return m, cmd
 		case tea.KeyEnter:
-			selectedItem := m.queue.SelectedItem()
+			selectedItem := m.lists[m.focused].SelectedItem()
 			item := selectedItem.(QueueItem)
-			m.queueItemDetails = QueueItem{id: item.id, videoId: item.videoId, outputName: item.outputName, embedThumbnail: item.embedThumbnail, audioOnly: item.audioOnly, audioFormat: item.audioFormat}
+			switch m.focused {
+			case queued:
+				m.queueItemDetails = QueueItem{id: item.id, videoId: item.videoId, outputName: item.outputName, embedThumbnail: item.embedThumbnail, audioOnly: item.audioOnly, audioFormat: item.audioFormat}
+			case done:
+				m.doneItemDetails = QueueItem{id: item.id, videoId: item.videoId, outputName: item.outputName, embedThumbnail: item.embedThumbnail, audioOnly: item.audioOnly, audioFormat: item.audioFormat}
+			}
+
+		case tea.KeyLeft:
+			m.Prev()
+		case tea.KeyRight:
+			m.Next()
+
 		}
 	case errMsg:
 		m.err = msg
@@ -185,8 +227,13 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.WindowSizeMsg:
 		if !m.ready {
 			m.width, m.height = msg.Width, msg.Height
-			m.queue.SetSize(msg.Width-10, msg.Height/5)
-			m.done.SetSize(msg.Width-10, msg.Height/5)
+			containerStyle.Height(msg.Height / 5)
+			containerStyle.Width(msg.Width - 10)
+			focusedStyle.Height(msg.Height / 5)
+			focusedStyle.Width(msg.Width - 10)
+			m.initLists(msg.Width, msg.Height)
+			// m.lists[queued].SetSize(msg.Width-10, msg.Height/5)
+			// m.lists[done].SetSize(msg.Width-10, msg.Height/5)
 			m.viewport = viewport.New(msg.Width, msg.Height/7)
 			m.viewport.HighPerformanceRendering = useHighPerformanceRenderer
 			m.viewport.SetContent(m.downloadOutput)
@@ -196,15 +243,17 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.viewport.Width = msg.Width
 			m.viewport.Height = msg.Height / 7
 		}
-		return m, nil
 
 	case downloadFinished:
 		m.downloadOutput = msg.content
 
 		m.viewport.SetContent(wordwrap.String(m.downloadOutput, m.width/widthDivisor-10))
 	}
-	m.queue, _ = m.queue.Update(msg)
-	m.done, _ = m.done.Update(msg)
+	if m.ready {
+		currList, cmd := m.lists[m.focused].Update(msg)
+		m.lists[m.focused] = currList
+		cmds = append(cmds, cmd)
+	}
 	m.spinner, cmd = m.spinner.Update(msg)
 	cmds = append(cmds, cmd)
 	m.viewport, cmd = m.viewport.Update(msg)
@@ -231,11 +280,11 @@ func (m model) nameView() string {
 }
 
 func (m model) queueView() string {
-	return listViewStyle.Render(m.queue.View())
+	return listViewStyle.Render(m.lists[queued].View())
 }
 
 func (m model) doneView() string {
-	return listViewStyle.Render(m.done.View())
+	return listViewStyle.Render(m.lists[done].View())
 }
 
 func (m model) queueItemDetailsView() string {
@@ -254,13 +303,28 @@ func (m model) queueItemDetailsView() string {
 	)
 }
 
+func (m model) doneItemDetailsView() string {
+	videoId := fmt.Sprintf("Video Id: %s", m.doneItemDetails.videoId)
+	outputName := fmt.Sprintf("Outname: %s", m.doneItemDetails.outputName)
+	audioFormat := fmt.Sprintf("AudioFormat: %s", m.doneItemDetails.audioFormat)
+	audioOnly := fmt.Sprintf("AudioOnly: %s", strconv.FormatBool(m.doneItemDetails.audioOnly))
+	return detailsViewStyle.Render(
+		lipgloss.JoinVertical(
+			lipgloss.Left,
+			outputName,
+			videoId,
+			audioFormat,
+			audioOnly,
+		),
+	)
+}
+
 func (m model) footerView() string {
 	info := detailsViewStyle.Render(fmt.Sprintf("%3.f%%", m.viewport.ScrollPercent()*100))
 	return lipgloss.JoinHorizontal(lipgloss.Center, info)
 }
 
 func (m model) View() string {
-	// h, _ := containerStyle.GetFrameSize()
 	twoWide := int(math.Floor(float64(m.width-10) / 2))
 	oneWide := int(float64(m.width - 8))
 	if m.err != nil {
@@ -269,36 +333,70 @@ func (m model) View() string {
 	if m.quitting {
 		return "Exiting...\n"
 	}
-	if !m.ready {
-		return "\n  Initializing..."
-	}
-	return lipgloss.JoinVertical(lipgloss.Left,
-		m.nameView(),
-		lipgloss.JoinHorizontal(lipgloss.Left,
 
-			containerStyle.Width(twoWide).Render(
-				lipgloss.JoinVertical(lipgloss.Left,
-					m.queueView(),
-					titleStyle.Render("Details"),
-					m.queueItemDetailsView(),
+	if m.ready {
+		switch m.focused {
+		case queued:
+			return lipgloss.JoinVertical(lipgloss.Left,
+				m.nameView(),
+				lipgloss.JoinHorizontal(lipgloss.Left,
+
+					focusedStyle.Width(twoWide).Render(
+						lipgloss.JoinVertical(lipgloss.Left,
+							m.queueView(),
+							titleStyle.Render("Details"),
+							m.queueItemDetailsView(),
+						),
+					),
+					containerStyle.Width(twoWide).Render(
+						lipgloss.JoinVertical(lipgloss.Left,
+							m.doneView(),
+							titleStyle.Render("Details"),
+							m.doneItemDetailsView(),
+						),
+					),
 				),
-			),
-			containerStyle.Width(twoWide).Render(
-				lipgloss.JoinVertical(lipgloss.Left,
-					m.done.View(),
-					titleStyle.Render("Details"),
-					m.queueItemDetailsView(),
+				containerStyle.Width(oneWide).Render(
+					lipgloss.JoinVertical(lipgloss.Left,
+						titleStyle.Render("Download status"),
+						m.viewport.View(),
+						m.footerView(),
+					),
 				),
-			),
-		),
-		containerStyle.Width(oneWide).Render(
-			lipgloss.JoinVertical(lipgloss.Left,
-				titleStyle.Render("Download status"),
-				m.viewport.View(),
-				m.footerView(),
-			),
-		),
-	)
+			)
+		case done:
+			return lipgloss.JoinVertical(lipgloss.Left,
+				m.nameView(),
+				lipgloss.JoinHorizontal(lipgloss.Left,
+
+					containerStyle.Width(twoWide).Render(
+						lipgloss.JoinVertical(lipgloss.Left,
+							m.queueView(),
+							titleStyle.Render("Details"),
+							m.queueItemDetailsView(),
+						),
+					),
+					focusedStyle.Width(twoWide).Render(
+						lipgloss.JoinVertical(lipgloss.Left,
+							m.doneView(),
+							titleStyle.Render("Details"),
+							m.doneItemDetailsView(),
+						),
+					),
+				),
+				containerStyle.Width(oneWide).Render(
+					lipgloss.JoinVertical(lipgloss.Left,
+						titleStyle.Render("Download status"),
+						m.viewport.View(),
+						m.footerView(),
+					),
+				),
+			)
+		}
+	} else {
+		return "Loading"
+	}
+	return "..."
 }
 
 // VIEWS END
