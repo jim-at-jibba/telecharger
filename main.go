@@ -8,7 +8,6 @@ import (
 	"os/exec"
 	"strconv"
 
-	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/list"
 	"github.com/charmbracelet/bubbles/spinner"
 	"github.com/charmbracelet/bubbles/viewport"
@@ -82,14 +81,14 @@ type model struct {
 	// queue            list.Model
 	queueItemDetails QueueItem
 	// done             list.Model
-	doneItemDetails  QueueItem
-	viewport         viewport.Model
-	downloadOutput   string
-	startingDownload bool
-	spinner          spinner.Model
-	quitting         bool
-	err              error
-	ready            bool
+	doneItemDetails QueueItem
+	viewport        viewport.Model
+	downloadOutput  string
+	// startingDownload bool
+	spinner  spinner.Model
+	quitting bool
+	err      error
+	ready    bool
 }
 
 type downloadFinished struct {
@@ -123,10 +122,10 @@ func (m model) executeDownload() tea.Cmd {
 	}
 }
 
-var quitKeys = key.NewBinding(
-	key.WithKeys("q", "esc", "ctrl+c"),
-	key.WithHelp("", "press q to quit"),
-)
+// var quitKeys = key.NewBinding(
+// 	key.WithKeys("q", "esc", "ctrl+c"),
+// 	key.WithHelp("", "press q to quit"),
+// )
 
 func initialModel() model {
 	s := spinner.New()

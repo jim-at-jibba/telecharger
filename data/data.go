@@ -47,7 +47,10 @@ func CreateQueueTable() {
 		log.Fatal(err.Error())
 	}
 
-	statement.Exec()
+	_, err = statement.Exec()
+	if err != nil {
+		log.Fatalln(err)
+	}
 }
 
 func InsertQueueItem(word, definition, category string) {
