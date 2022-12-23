@@ -8,6 +8,7 @@ import (
 	"os/exec"
 	"strconv"
 
+	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/list"
 	"github.com/charmbracelet/bubbles/spinner"
 	"github.com/charmbracelet/bubbles/viewport"
@@ -197,6 +198,47 @@ func (m *model) initLists(width, height int) {
 	m.lists[done].SetItems(doneItemsList)
 }
 
+type KeyMap struct {
+	Up       key.Binding
+	Down     key.Binding
+	Left     key.Binding
+	Right    key.Binding
+	Quit     key.Binding
+	Download key.Binding
+	Enter    key.Binding
+}
+
+var DefaultKeyMap = KeyMap{
+	Up: key.NewBinding(
+		key.WithKeys("k", "up"),
+		key.WithHelp("↑/k", "move up"),
+	),
+	Down: key.NewBinding(
+		key.WithKeys("j", "down"),
+		key.WithHelp("↓/j", "move down"),
+	),
+	Left: key.NewBinding(
+		key.WithKeys("h", "left"),
+		key.WithHelp("←/h", "move left"),
+	),
+	Right: key.NewBinding(
+		key.WithKeys("l", "right"),
+		key.WithHelp("→/l", "move right"),
+	),
+	Quit: key.NewBinding(
+		key.WithKeys("q", "ctrl+c"),
+		key.WithHelp("q/ctrl+c", "quit"),
+	),
+	Download: key.NewBinding(
+		key.WithKeys("d"),
+		key.WithHelp("↓/j", "start download"),
+	),
+	Enter: key.NewBinding(
+		key.WithKeys("enter"),
+		key.WithHelp("enter", "show more info"),
+	),
+}
+
 func (m model) Init() tea.Cmd {
 	return m.spinner.Tick
 }
@@ -207,21 +249,17 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		cmds []tea.Cmd
 	)
 	switch msg := msg.(type) {
-
 	case tea.KeyMsg:
-		switch msg.String() {
-		case "q":
+		switch {
+		case key.Matches(msg, DefaultKeyMap.Left):
+			m.Prev()
+		case key.Matches(msg, DefaultKeyMap.Right):
+			m.Next()
+		case key.Matches(msg, DefaultKeyMap.Quit):
 			return m, tea.Quit
-		case "d":
-			m.startingDownload = true
+		case key.Matches(msg, DefaultKeyMap.Download):
 			return m, m.executeDownload()
-		}
-		switch msg.Type {
-		case tea.KeyRunes:
-		case tea.KeyCtrlC, tea.KeyEsc:
-			cmd = tea.Quit
-			return m, cmd
-		case tea.KeyEnter:
+		case key.Matches(msg, DefaultKeyMap.Enter):
 			selectedItem := m.lists[m.focused].SelectedItem()
 			item := selectedItem.(QueueItem)
 			switch m.focused {
@@ -230,11 +268,6 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			case done:
 				m.doneItemDetails = QueueItem{id: item.id, videoId: item.videoId, outputName: item.outputName, embedThumbnail: item.embedThumbnail, audioOnly: item.audioOnly, audioFormat: item.audioFormat}
 			}
-
-		case tea.KeyLeft:
-			m.Prev()
-		case tea.KeyRight:
-			m.Next()
 		}
 	case errMsg:
 		m.err = msg
