@@ -37,7 +37,7 @@ var (
 			Border(lipgloss.RoundedBorder(), true)
 	focusedStyle = containerNugget.Copy().
 			Border(lipgloss.RoundedBorder(), true).
-			BorderForeground(lipgloss.Color("62"))
+			BorderForeground(lipgloss.Color("6"))
 	detailsViewStyle = lipgloss.NewStyle().PaddingLeft(2).
 				MarginRight(1)
 	listViewStyle = lipgloss.NewStyle()
@@ -52,7 +52,10 @@ var (
 		Border(lipgloss.RoundedBorder(), true)
 	// encodingStyle = statusNugget.Copy().Background(lipgloss.Color("#A550DF")).Align(lipgloss.Right)
 	// statusText    = statusBarStyle.Copy()
-	titleStyle = statusNugget.Copy().Background(lipgloss.Color("#6124DF"))
+	titleStyle = statusNugget.Copy().Background(lipgloss.Color("4"))
+	listTitle  = lipgloss.NewStyle().
+			Bold(true).
+			Background(lipgloss.Color("4")).Padding(0, 1)
 )
 
 type errMsg error
@@ -161,7 +164,14 @@ func (m *model) initLists(width, height int) {
 	if err != nil {
 		fmt.Println(err.Error())
 	}
-	defaultList := list.New([]list.Item{}, list.NewDefaultDelegate(), width-10, height/5)
+	d := list.NewDefaultDelegate()
+
+	// Change colors
+	c := lipgloss.Color("6")
+	d.Styles.SelectedTitle = d.Styles.SelectedTitle.Foreground(c).BorderLeftForeground(c)
+	d.Styles.SelectedDesc = d.Styles.SelectedTitle.Copy() // reuse the title style here
+
+	defaultList := list.New([]list.Item{}, d, width-10, height/5)
 	defaultList.SetShowHelp(false)
 	m.lists = []list.Model{defaultList, defaultList}
 
@@ -174,9 +184,13 @@ func (m *model) initLists(width, height int) {
 	for _, item := range doneItems {
 		doneItemsList = append(doneItemsList, QueueItem{id: item.Id, videoId: item.VideoId, outputName: item.OutputName, embedThumbnail: item.EmbedThumbnail, audioOnly: item.AudioOnly, audioFormat: item.AudioFormat})
 	}
-
+	m.lists[queued].Styles.Title = listTitle
+	m.lists[queued].Styles.ActivePaginationDot = lipgloss.NewStyle().Foreground(lipgloss.Color("7"))
 	m.lists[queued].Title = "Queued"
 	m.lists[queued].SetItems(queueItemsList)
+
+	m.lists[done].Styles.Title = listTitle
+	m.lists[done].Styles.ActivePaginationDot = lipgloss.NewStyle().Foreground(lipgloss.Color("7"))
 	m.lists[done].Title = "Done"
 	m.lists[done].SetItems(doneItemsList)
 }
