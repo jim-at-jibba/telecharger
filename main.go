@@ -27,6 +27,7 @@ const (
 )
 
 var widthDivisor = 2
+var version = "0.0.1"
 
 var (
 	containerNugget = lipgloss.NewStyle().
@@ -247,8 +248,6 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			focusedStyle.Height(msg.Height / 5)
 			focusedStyle.Width(msg.Width - 10)
 			m.initLists(msg.Width, msg.Height)
-			// m.lists[queued].SetSize(msg.Width-10, msg.Height/5)
-			// m.lists[done].SetSize(msg.Width-10, msg.Height/5)
 			m.viewport = viewport.New(msg.Width, msg.Height/7)
 			m.viewport.HighPerformanceRendering = useHighPerformanceRenderer
 			m.viewport.SetContent(m.downloadOutput)
@@ -279,9 +278,10 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 // VIEWS START
 func (m model) nameView() string {
-	// h, _ := nameStyle.GetFrameSize()
 	oneWide := int(float64(m.width - 8))
-	name := nameStyle.Width(oneWide).Render(`
+	version := fmt.Sprintf("  Version: %s\n  Author: James Best", version)
+
+	acsi := `
   _       _           _
  | |     | |         | |
  | |_ ___| | ___  ___| |__   __ _ _ __ __ _  ___ _ __
@@ -290,7 +290,13 @@ func (m model) nameView() string {
   \__\___|_|\___|\___|_| |_|\__,_|_|  \__, |\___|_|
                                        __/ |
                                       |___/
-    `)
+    `
+	name := nameStyle.Width(oneWide).Render(
+		lipgloss.JoinHorizontal(lipgloss.Center,
+			acsi,
+			version,
+		),
+	)
 
 	return name
 }
