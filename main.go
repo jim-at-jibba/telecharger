@@ -34,9 +34,10 @@ var (
 			MarginRight(1)
 	containerStyle = containerNugget.Copy().
 			Border(lipgloss.RoundedBorder(), true)
-	focusedStyle = containerNugget.Copy().
-			Border(lipgloss.RoundedBorder(), true).
-			BorderForeground(lipgloss.Color("6"))
+	helpContainerStyle = containerStyle.Copy()
+	focusedStyle       = containerNugget.Copy().
+				Border(lipgloss.RoundedBorder(), true).
+				BorderForeground(lipgloss.Color("1"))
 	detailsViewStyle = lipgloss.NewStyle().PaddingLeft(2).
 				MarginRight(1)
 	listViewStyle = lipgloss.NewStyle()
@@ -233,7 +234,6 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.Prev()
 		case tea.KeyRight:
 			m.Next()
-
 		}
 	case errMsg:
 		m.err = msg
@@ -352,6 +352,11 @@ func (m model) viewportView() string {
 	return lipgloss.JoinHorizontal(lipgloss.Center, info)
 }
 
+func (m model) helpView() string {
+	// TODO: use the keymaps to populate the help string
+	return lipgloss.NewStyle().Foreground(lipgloss.Color("241")).Render("\n ↑/↓: navigate • ←/→: swap lists • c: create entry • d: download entry • q: quit\n")
+}
+
 func (m model) View() string {
 	twoWide := int(math.Floor(float64(m.width-10) / 2))
 	oneWide := int(float64(m.width - 8))
@@ -384,6 +389,9 @@ func (m model) View() string {
 						),
 					),
 				),
+				helpContainerStyle.Width(oneWide).Render(
+					m.helpView(),
+				),
 				containerStyle.Width(oneWide).Render(
 					lipgloss.JoinVertical(lipgloss.Left,
 						titleStyle.Render("Download status"),
@@ -410,6 +418,9 @@ func (m model) View() string {
 							m.doneItemDetailsView(),
 						),
 					),
+				),
+				helpContainerStyle.Width(oneWide).Render(
+					m.helpView(),
 				),
 				containerStyle.Width(oneWide).Render(
 					lipgloss.JoinVertical(lipgloss.Left,
