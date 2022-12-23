@@ -42,8 +42,9 @@ var (
 	listViewStyle = lipgloss.NewStyle()
 	// PaddingRight(1).
 	// MarginRight(1)
-	// spacerStyle = lipgloss.NewStyle().
-	// 		MarginTop(1)
+	spinnerStyle = lipgloss.NewStyle().
+			MarginLeft(1).
+			MarginTop(1)
 	statusNugget = lipgloss.NewStyle().Foreground(lipgloss.Color("#FFFDF5")).Padding(0, 1).MarginLeft(1)
 	nameStyle    = lipgloss.NewStyle().
 			Foreground(lipgloss.AdaptiveColor{Light: "#343433", Dark: "#C1C6B2"}).
@@ -81,14 +82,14 @@ type model struct {
 	// queue            list.Model
 	queueItemDetails QueueItem
 	// done             list.Model
-	doneItemDetails QueueItem
-	viewport        viewport.Model
-	downloadOutput  string
-	// startingDownload bool
-	spinner  spinner.Model
-	quitting bool
-	err      error
-	ready    bool
+	doneItemDetails  QueueItem
+	viewport         viewport.Model
+	downloadOutput   string
+	startingDownload bool
+	spinner          spinner.Model
+	quitting         bool
+	err              error
+	ready            bool
 }
 
 type downloadFinished struct {
@@ -210,6 +211,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "q":
 			return m, tea.Quit
 		case "d":
+			m.startingDownload = true
 			return m, m.executeDownload()
 		}
 		switch msg.Type {
@@ -259,6 +261,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case downloadFinished:
 		m.downloadOutput = msg.content
+		m.startingDownload = false
 
 		m.viewport.SetContent(wordwrap.String(m.downloadOutput, m.width/widthDivisor-10))
 	}
@@ -337,6 +340,18 @@ func (m model) footerView() string {
 	return lipgloss.JoinHorizontal(lipgloss.Center, info)
 }
 
+func (m model) viewportView() string {
+	var info string
+	if m.startingDownload && m.downloadOutput == "" {
+		info = fmt.Sprintf("\n\n   %s Downloading...\n\n", m.spinner.View())
+	} else {
+		info = lipgloss.JoinVertical(lipgloss.Left, m.viewport.View(),
+			m.footerView(),
+		)
+	}
+	return lipgloss.JoinHorizontal(lipgloss.Center, info)
+}
+
 func (m model) View() string {
 	twoWide := int(math.Floor(float64(m.width-10) / 2))
 	oneWide := int(float64(m.width - 8))
@@ -372,8 +387,7 @@ func (m model) View() string {
 				containerStyle.Width(oneWide).Render(
 					lipgloss.JoinVertical(lipgloss.Left,
 						titleStyle.Render("Download status"),
-						m.viewport.View(),
-						m.footerView(),
+						m.viewportView(),
 					),
 				),
 			)
@@ -400,8 +414,7 @@ func (m model) View() string {
 				containerStyle.Width(oneWide).Render(
 					lipgloss.JoinVertical(lipgloss.Left,
 						titleStyle.Render("Download status"),
-						m.viewport.View(),
-						m.footerView(),
+						m.viewportView(),
 					),
 				),
 			)
