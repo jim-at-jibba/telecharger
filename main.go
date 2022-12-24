@@ -11,6 +11,7 @@ import (
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/list"
 	"github.com/charmbracelet/bubbles/spinner"
+	"github.com/charmbracelet/bubbles/textinput"
 	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
@@ -27,10 +28,19 @@ const (
 	done
 )
 
+/* MODEL MANAGMENT */
+var models []tea.Model
+
+const (
+	info status = iota
+	form
+)
+
 var widthDivisor = 2
 var version = "0.0.1"
 
 var (
+	subtle          = lipgloss.AdaptiveColor{Light: "#D9DCCF", Dark: "#383838"}
 	containerNugget = lipgloss.NewStyle().
 			PaddingRight(1).
 			MarginRight(1)
@@ -54,6 +64,14 @@ var (
 	listTitle  = lipgloss.NewStyle().
 			Bold(true).
 			Background(lipgloss.Color("4")).Padding(0, 1)
+	dialogBoxStyle = lipgloss.NewStyle().
+			Border(lipgloss.RoundedBorder()).
+			BorderForeground(lipgloss.Color("#874BFD")).
+			Padding(1, 0).
+			BorderTop(true).
+			BorderLeft(true).
+			BorderRight(true).
+			BorderBottom(true)
 )
 
 type errMsg error
@@ -207,6 +225,7 @@ type KeyMap struct {
 	Quit     key.Binding
 	Download key.Binding
 	Enter    key.Binding
+	Create   key.Binding
 }
 
 var DefaultKeyMap = KeyMap{
@@ -238,6 +257,10 @@ var DefaultKeyMap = KeyMap{
 		key.WithKeys("enter"),
 		key.WithHelp("enter", "show more info"),
 	),
+	Create: key.NewBinding(
+		key.WithKeys("c"),
+		key.WithHelp("c", "create new queued item"),
+	),
 }
 
 func (m model) Init() tea.Cmd {
@@ -260,6 +283,10 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, tea.Quit
 		case key.Matches(msg, DefaultKeyMap.Download):
 			return m, m.executeDownload()
+		case key.Matches(msg, DefaultKeyMap.Create):
+			models[info] = m
+			models[form] = NewForm()
+			return models[form].Update(nil)
 		case key.Matches(msg, DefaultKeyMap.Enter):
 			selectedItem := m.lists[m.focused].SelectedItem()
 			item := selectedItem.(QueueItem)
@@ -490,6 +517,94 @@ func (m model) View() string {
 }
 
 // VIEWS END
+func NewQueuedItem(videoId, outputName, audioFormat string, embedThumbnail, audioOnly bool) QueueItem {
+	return QueueItem{
+		videoId:        videoId,
+		outputName:     outputName,
+		embedThumbnail: embedThumbnail,
+		audioOnly:      audioOnly,
+		audioFormat:    audioFormat,
+	}
+}
+
+/* FORM MODEL */
+type Form struct {
+	videoId     textinput.Model
+	outputName  textinput.Model
+	audioFormat textinput.Model
+}
+
+func (m Form) CreateQueuedItem() tea.Msg {
+	// TODO: Create a new task
+	task := NewQueuedItem(
+		m.videoId.Value(),
+		m.outputName.Value(),
+		m.audioFormat.Value(),
+		true,
+		true,
+	)
+	return task
+}
+
+func NewForm() *Form {
+	form := &Form{}
+	form.videoId = textinput.New()
+	form.videoId.Placeholder = "Youtube video url"
+	form.videoId.Focus()
+	form.outputName = textinput.New()
+	form.outputName.Placeholder = "New name"
+	form.audioFormat = textinput.New()
+	form.audioFormat.Placeholder = "Audio Format (mp3, m4a)"
+	return form
+}
+
+func (m Form) Init() tea.Cmd {
+	return nil
+}
+
+func (m Form) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	var cmd tea.Cmd
+	switch msg := msg.(type) {
+	case tea.KeyMsg:
+		switch msg.String() {
+		case "ctrl+c", "q":
+			return m, tea.Quit
+		case "enter":
+			if m.videoId.Focused() {
+				m.videoId.Blur()
+				m.outputName.Focus()
+				return m, textinput.Blink
+			} else if m.outputName.Focused() {
+				m.outputName.Blur()
+				m.audioFormat.Focus()
+				return m, textinput.Blink
+			} else {
+				models[form] = m
+				return models[info], m.CreateQueuedItem
+			}
+		}
+	}
+	if m.videoId.Focused() {
+		m.videoId, cmd = m.videoId.Update(msg)
+		return m, cmd
+	} else if m.outputName.Focused() {
+		m.outputName, cmd = m.outputName.Update(msg)
+		return m, cmd
+	} else {
+		m.audioFormat, cmd = m.audioFormat.Update(msg)
+		return m, cmd
+
+	}
+}
+
+func (m Form) View() string {
+	return lipgloss.JoinVertical(
+		lipgloss.Left,
+		m.videoId.View(),
+		m.outputName.View(),
+		m.audioFormat.View(),
+	)
+}
 
 func main() {
 	data.OpenDatabase()
@@ -502,16 +617,12 @@ func main() {
 		}
 		defer f.Close()
 	}
-	p := tea.NewProgram(initialModel())
+	models = []tea.Model{initialModel(), NewForm()}
+	m := models[info]
+	p := tea.NewProgram(m)
+
 	if _, err := p.Run(); err != nil {
 		fmt.Println(err)
 		os.Exit(1)
 	}
-}
-
-func max(a, b int) int {
-	if a > b {
-		return a
-	}
-	return b
 }
