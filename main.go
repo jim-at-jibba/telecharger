@@ -43,18 +43,13 @@ var (
 	detailsViewStyle = lipgloss.NewStyle().PaddingLeft(2).
 				MarginRight(1)
 	listViewStyle = lipgloss.NewStyle()
-	// PaddingRight(1).
-	// MarginRight(1)
-	spinnerStyle = lipgloss.NewStyle().
+	spinnerStyle  = lipgloss.NewStyle().
 			MarginLeft(1).
 			MarginTop(1)
 	statusNugget = lipgloss.NewStyle().Foreground(lipgloss.Color("#FFFDF5")).Padding(0, 1).MarginLeft(1)
 	nameStyle    = lipgloss.NewStyle().
 			Foreground(lipgloss.AdaptiveColor{Light: "#343433", Dark: "#C1C6B2"}).
-		// PaddingLeft(5).
-		Border(lipgloss.RoundedBorder(), true)
-	// encodingStyle = statusNugget.Copy().Background(lipgloss.Color("#A550DF")).Align(lipgloss.Right)
-	// statusText    = statusBarStyle.Copy()
+			Border(lipgloss.RoundedBorder(), true)
 	titleStyle = statusNugget.Copy().Background(lipgloss.Color("4"))
 	listTitle  = lipgloss.NewStyle().
 			Bold(true).
@@ -79,12 +74,9 @@ func (i QueueItem) FilterValue() string { return i.outputName }
 type model struct {
 	width, height int
 
-	lists   []list.Model
-	focused status
-
-	// queue            list.Model
+	lists            []list.Model
+	focused          status
 	queueItemDetails QueueItem
-	// done             list.Model
 	doneItemDetails  QueueItem
 	viewport         viewport.Model
 	downloadOutput   string
@@ -126,11 +118,6 @@ func (m model) executeDownload() tea.Cmd {
 	}
 }
 
-// var quitKeys = key.NewBinding(
-// 	key.WithKeys("q", "esc", "ctrl+c"),
-// 	key.WithHelp("", "press q to quit"),
-// )
-
 func initialModel() model {
 	s := spinner.New()
 	s.Spinner = spinner.Dot
@@ -160,16 +147,14 @@ func (m *model) initLists(width, height int) {
 	if err != nil {
 		fmt.Println(err.Error())
 	}
-	if err != nil {
-		fmt.Println(err.Error())
-	}
+
 	doneItems, err := data.GetAllQueueItems("completed")
 	if err != nil {
 		fmt.Println(err.Error())
 	}
+
 	d := list.NewDefaultDelegate()
 
-	// Change colors
 	c := lipgloss.Color("6")
 	d.Styles.SelectedTitle = d.Styles.SelectedTitle.Foreground(c).BorderLeftForeground(c)
 	d.Styles.SelectedDesc = d.Styles.SelectedTitle.Copy() // reuse the title style here
@@ -180,12 +165,28 @@ func (m *model) initLists(width, height int) {
 
 	queueItemsList := []list.Item{}
 	for _, item := range queueItems {
-		queueItemsList = append(queueItemsList, QueueItem{id: item.Id, videoId: item.VideoId, outputName: item.OutputName, embedThumbnail: item.EmbedThumbnail, audioOnly: item.AudioOnly, audioFormat: item.AudioFormat})
+		queueItemsList = append(queueItemsList,
+			QueueItem{
+				id:             item.Id,
+				videoId:        item.VideoId,
+				outputName:     item.OutputName,
+				embedThumbnail: item.EmbedThumbnail,
+				audioOnly:      item.AudioOnly,
+				audioFormat:    item.AudioFormat,
+			})
 	}
 
 	doneItemsList := []list.Item{}
 	for _, item := range doneItems {
-		doneItemsList = append(doneItemsList, QueueItem{id: item.Id, videoId: item.VideoId, outputName: item.OutputName, embedThumbnail: item.EmbedThumbnail, audioOnly: item.AudioOnly, audioFormat: item.AudioFormat})
+		doneItemsList = append(doneItemsList,
+			QueueItem{
+				id:             item.Id,
+				videoId:        item.VideoId,
+				outputName:     item.OutputName,
+				embedThumbnail: item.EmbedThumbnail,
+				audioOnly:      item.AudioOnly,
+				audioFormat:    item.AudioFormat,
+			})
 	}
 	m.lists[queued].Styles.Title = listTitle
 	m.lists[queued].Styles.ActivePaginationDot = lipgloss.NewStyle().Foreground(lipgloss.Color("7"))
@@ -264,9 +265,23 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			item := selectedItem.(QueueItem)
 			switch m.focused {
 			case queued:
-				m.queueItemDetails = QueueItem{id: item.id, videoId: item.videoId, outputName: item.outputName, embedThumbnail: item.embedThumbnail, audioOnly: item.audioOnly, audioFormat: item.audioFormat}
+				m.queueItemDetails = QueueItem{
+					id:             item.id,
+					videoId:        item.videoId,
+					outputName:     item.outputName,
+					embedThumbnail: item.embedThumbnail,
+					audioOnly:      item.audioOnly,
+					audioFormat:    item.audioFormat,
+				}
 			case done:
-				m.doneItemDetails = QueueItem{id: item.id, videoId: item.videoId, outputName: item.outputName, embedThumbnail: item.embedThumbnail, audioOnly: item.audioOnly, audioFormat: item.audioFormat}
+				m.doneItemDetails = QueueItem{
+					id:             item.id,
+					videoId:        item.videoId,
+					outputName:     item.outputName,
+					embedThumbnail: item.embedThumbnail,
+					audioOnly:      item.audioOnly,
+					audioFormat:    item.audioFormat,
+				}
 			}
 		}
 	case errMsg:
@@ -392,7 +407,6 @@ func (m model) viewportView() string {
 }
 
 func (m model) helpView() string {
-	// TODO: use the keymaps to populate the help string
 	return lipgloss.NewStyle().Foreground(lipgloss.Color("241")).Render("\n ↑/↓: navigate • ←/→: swap lists • c: create entry • d: download entry • q: quit\n")
 }
 
