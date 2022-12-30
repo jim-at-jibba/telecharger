@@ -697,7 +697,7 @@ func checkbox(label string, checked, selected bool, optionsActive bool) string {
 	} else if checked && optionsActive {
 		return activeStyle.Render("[ ] " + label)
 	}
-	return inactiveStyle.Render("[ ] %s" + label)
+	return inactiveStyle.Render("[ ] " + label)
 }
 
 func (m Form) choicesView() string {
