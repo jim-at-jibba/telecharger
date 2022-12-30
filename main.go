@@ -64,14 +64,12 @@ var (
 	listTitle  = lipgloss.NewStyle().
 			Bold(true).
 			Background(lipgloss.Color("4")).Padding(0, 1)
-	dialogBoxStyle = lipgloss.NewStyle().
-			Border(lipgloss.RoundedBorder()).
-			BorderForeground(lipgloss.Color("#874BFD")).
-			Padding(1, 0).
-			BorderTop(true).
-			BorderLeft(true).
-			BorderRight(true).
-			BorderBottom(true)
+	formStyle = lipgloss.NewStyle().
+			PaddingLeft(2).
+			PaddingTop(2).
+			MarginRight(1)
+	checkboxSelectedStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("8"))
+	checkboxCheckedStyle  = lipgloss.NewStyle().Foreground(lipgloss.Color("6"))
 )
 
 type errMsg error
@@ -528,10 +526,60 @@ func NewQueuedItem(videoId, outputName, audioFormat string, embedThumbnail, audi
 }
 
 /* FORM MODEL */
+type FormKeyMap struct {
+	Quit  key.Binding
+	Enter key.Binding
+	Back  key.Binding
+	Up    key.Binding
+	Down  key.Binding
+	Space key.Binding
+}
+
+var DefaultFormKeyMap = FormKeyMap{
+	Quit: key.NewBinding(
+		key.WithKeys("q", "ctrl+c"),
+		key.WithHelp("q/ctrl+c", "quit"),
+	),
+	Enter: key.NewBinding(
+		key.WithKeys("enter"),
+		key.WithHelp("enter", "go to next field/submit"),
+	),
+	Back: key.NewBinding(
+		key.WithKeys("esc"),
+		key.WithHelp("esc", "go back"),
+	),
+	Up: key.NewBinding(
+		key.WithKeys("k", "up"),
+		key.WithHelp("↑/k", "move up"),
+	),
+	Down: key.NewBinding(
+		key.WithKeys("j", "down"),
+		key.WithHelp("↓/j", "move down"),
+	),
+	Space: key.NewBinding(
+		key.WithKeys("a"),
+		key.WithHelp("a", "select option"),
+	),
+}
+
+// boolChoices
+// embedThumbnail
+// audioOnly
+
+type option int
+
+const (
+	embedThumbnail option = iota
+	audioOnly
+)
+
 type Form struct {
-	videoId     textinput.Model
-	outputName  textinput.Model
-	audioFormat textinput.Model
+	videoId         textinput.Model
+	outputName      textinput.Model
+	audioFormat     textinput.Model
+	choosingOptions bool
+	choice          option
+	boolChoices     []option
 }
 
 func (m Form) CreateQueuedItem() tea.Msg {
@@ -548,6 +596,7 @@ func (m Form) CreateQueuedItem() tea.Msg {
 
 func NewForm() *Form {
 	form := &Form{}
+	form.choosingOptions = false
 	form.videoId = textinput.New()
 	form.videoId.Placeholder = "Youtube video url"
 	form.videoId.Focus()
@@ -562,14 +611,23 @@ func (m Form) Init() tea.Cmd {
 	return nil
 }
 
+func contains(s []option, find int) (bool, int) {
+	for i, v := range s {
+		if int(v) == find {
+			return true, i
+		}
+	}
+
+	return false, 0
+}
+
 func (m Form) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
-		switch msg.String() {
-		case "ctrl+c", "q":
-			return m, tea.Quit
-		case "enter":
+		switch {
+
+		case key.Matches(msg, DefaultFormKeyMap.Enter):
 			if m.videoId.Focused() {
 				m.videoId.Blur()
 				m.outputName.Focus()
@@ -578,10 +636,44 @@ func (m Form) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.outputName.Blur()
 				m.audioFormat.Focus()
 				return m, textinput.Blink
+			} else if m.audioFormat.Focused() {
+				m.audioFormat.Blur()
+				m.choosingOptions = true
+				m.choice = embedThumbnail
 			} else {
 				models[form] = m
 				return models[info], m.CreateQueuedItem
 			}
+		case key.Matches(msg, DefaultFormKeyMap.Quit):
+			return m, tea.Quit
+		case key.Matches(msg, DefaultFormKeyMap.Down):
+			if !m.choosingOptions {
+				return m, nil
+			}
+			m.choice++
+			if m.choice > 1 {
+				m.choice = 1
+			}
+		case key.Matches(msg, DefaultFormKeyMap.Up):
+			if !m.choosingOptions {
+				return m, nil
+			}
+			m.choice--
+			if m.choice < 0 {
+				m.choice = 0
+			}
+		case key.Matches(msg, DefaultFormKeyMap.Space):
+			match, i := contains(m.boolChoices, int(m.choice))
+
+			if match {
+				m.boolChoices = append(m.boolChoices[:i], m.boolChoices[i+1:]...)
+			} else {
+				m.boolChoices = append(m.boolChoices, m.choice)
+			}
+		case key.Matches(msg, DefaultFormKeyMap.Back):
+			models[form] = m
+			models[info] = initialModel()
+			return models[info].Update(nil)
 		}
 	}
 	if m.videoId.Focused() {
@@ -590,19 +682,58 @@ func (m Form) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	} else if m.outputName.Focused() {
 		m.outputName, cmd = m.outputName.Update(msg)
 		return m, cmd
-	} else {
+	} else if m.audioFormat.Focused() {
 		m.audioFormat, cmd = m.audioFormat.Update(msg)
 		return m, cmd
-
 	}
+
+	return m, cmd
+}
+
+func checkbox(label string, checked, selected bool) string {
+	if selected {
+		return checkboxCheckedStyle.Render("[x] " + label)
+	} else if checked {
+		return checkboxSelectedStyle.Render("[  ] " + label)
+	}
+	return fmt.Sprintf("[ ] %s", label)
+}
+
+func (m Form) choicesView() string {
+	c := m.choice
+	s := m.boolChoices
+
+	containsEmbed, _ := contains(s, 0)
+	containsAudioOnly, _ := contains(s, 1)
+
+	choices := fmt.Sprintf(
+		"%s\n%s\n",
+		checkbox("Embed Thumbnail", c == 0, containsEmbed),
+		checkbox("Audio Only", c == 1, containsAudioOnly),
+	)
+
+	return choices
 }
 
 func (m Form) View() string {
-	return lipgloss.JoinVertical(
-		lipgloss.Left,
-		m.videoId.View(),
-		m.outputName.View(),
-		m.audioFormat.View(),
+	return containerStyle.Render(
+		lipgloss.JoinVertical(
+			lipgloss.Left,
+			titleStyle.Render("Create new download"),
+			formStyle.Render(
+				lipgloss.JoinVertical(lipgloss.Left,
+					m.videoId.View(),
+					m.outputName.View(),
+					m.audioFormat.View(),
+				),
+			),
+			titleStyle.Render("Youtube-dl options"),
+			formStyle.Render(
+				lipgloss.JoinVertical(lipgloss.Left,
+					m.choicesView(),
+				),
+			),
+		),
 	)
 }
 
