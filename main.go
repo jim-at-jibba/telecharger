@@ -68,9 +68,10 @@ var (
 			PaddingLeft(2).
 			PaddingTop(1).
 			MarginRight(1)
-	checkboxSelectedStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("8"))
-	checkboxCheckedStyle  = lipgloss.NewStyle().Foreground(lipgloss.Color("6"))
-	optionsViewStyle      = lipgloss.NewStyle()
+	inactiveStyle        = lipgloss.NewStyle().Foreground(lipgloss.Color("8"))
+	activeStyle          = lipgloss.NewStyle().Foreground(lipgloss.Color("2"))
+	checkboxCheckedStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("6"))
+	optionsViewStyle     = lipgloss.NewStyle()
 )
 
 type errMsg error
@@ -533,7 +534,7 @@ type FormKeyMap struct {
 	Back  key.Binding
 	Up    key.Binding
 	Down  key.Binding
-	Space key.Binding
+	Tab   key.Binding
 }
 
 var DefaultFormKeyMap = FormKeyMap{
@@ -541,9 +542,9 @@ var DefaultFormKeyMap = FormKeyMap{
 		key.WithKeys("q", "ctrl+c"),
 		key.WithHelp("q/ctrl+c", "quit"),
 	),
-	Enter: key.NewBinding(
-		key.WithKeys("enter"),
-		key.WithHelp("enter", "go to next field/submit"),
+	Tab: key.NewBinding(
+		key.WithKeys("tab"),
+		key.WithHelp("tab", "go to next field/submit"),
 	),
 	Back: key.NewBinding(
 		key.WithKeys("esc"),
@@ -557,9 +558,9 @@ var DefaultFormKeyMap = FormKeyMap{
 		key.WithKeys("j", "down"),
 		key.WithHelp("↓/j", "move down"),
 	),
-	Space: key.NewBinding(
-		key.WithKeys("a"),
-		key.WithHelp("a", "select option"),
+	Enter: key.NewBinding(
+		key.WithKeys("enter"),
+		key.WithHelp("enter", "select option"),
 	),
 }
 
@@ -628,7 +629,7 @@ func (m Form) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.KeyMsg:
 		switch {
 
-		case key.Matches(msg, DefaultFormKeyMap.Enter):
+		case key.Matches(msg, DefaultFormKeyMap.Tab):
 			if m.videoId.Focused() {
 				m.videoId.Blur()
 				m.outputName.Focus()
@@ -663,7 +664,7 @@ func (m Form) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if m.choice < 0 {
 				m.choice = 0
 			}
-		case key.Matches(msg, DefaultFormKeyMap.Space):
+		case key.Matches(msg, DefaultFormKeyMap.Enter):
 			match, i := contains(m.boolChoices, int(m.choice))
 
 			if match {
@@ -673,8 +674,7 @@ func (m Form) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 		case key.Matches(msg, DefaultFormKeyMap.Back):
 			models[form] = m
-			models[info] = initialModel()
-			return models[info].Update(nil)
+			return models[info], nil
 		}
 	}
 	if m.videoId.Focused() {
@@ -691,13 +691,13 @@ func (m Form) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, cmd
 }
 
-func checkbox(label string, checked, selected bool) string {
+func checkbox(label string, checked, selected bool, optionsActive bool) string {
 	if selected {
 		return checkboxCheckedStyle.Render("[x] " + label)
-	} else if checked {
-		return checkboxSelectedStyle.Render("[  ] " + label)
+	} else if checked && optionsActive {
+		return activeStyle.Render("[ ] " + label)
 	}
-	return fmt.Sprintf("[ ] %s", label)
+	return inactiveStyle.Render("[ ] %s" + label)
 }
 
 func (m Form) choicesView() string {
@@ -709,15 +709,15 @@ func (m Form) choicesView() string {
 
 	choices := fmt.Sprintf(
 		"%s\n%s\n",
-		checkbox("Embed Thumbnail", c == 0, containsEmbed),
-		checkbox("Audio Only", c == 1, containsAudioOnly),
+		checkbox("Embed Thumbnail", c == 0, containsEmbed, m.choosingOptions),
+		checkbox("Audio Only", c == 1, containsAudioOnly, m.choosingOptions),
 	)
 
 	return choices
 }
 
 func (m Form) formHelpView() string {
-	return lipgloss.NewStyle().Foreground(lipgloss.Color("241")).Render("\n ↑/↓: navigate options • a: select/deselect option • enter: move to next/complete • q: quit\n")
+	return lipgloss.NewStyle().Foreground(lipgloss.Color("241")).Render("\n ↑/↓: navigate options • enter: select/deselect option • tab: move to next/complete • q: quit\n")
 }
 
 func (m Form) View() string {
