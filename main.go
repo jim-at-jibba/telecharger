@@ -60,16 +60,17 @@ var (
 	nameStyle    = lipgloss.NewStyle().
 			Foreground(lipgloss.AdaptiveColor{Light: "#343433", Dark: "#C1C6B2"}).
 			Border(lipgloss.RoundedBorder(), true)
-	titleStyle = statusNugget.Copy().Background(lipgloss.Color("4"))
+	titleStyle = statusNugget.Copy().Background(lipgloss.Color("4")).MarginTop(1).MarginBottom(1)
 	listTitle  = lipgloss.NewStyle().
 			Bold(true).
 			Background(lipgloss.Color("4")).Padding(0, 1)
 	formStyle = lipgloss.NewStyle().
 			PaddingLeft(2).
-			PaddingTop(2).
+			PaddingTop(1).
 			MarginRight(1)
 	checkboxSelectedStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("8"))
 	checkboxCheckedStyle  = lipgloss.NewStyle().Foreground(lipgloss.Color("6"))
+	optionsViewStyle      = lipgloss.NewStyle()
 )
 
 type errMsg error
@@ -715,24 +716,36 @@ func (m Form) choicesView() string {
 	return choices
 }
 
+func (m Form) formHelpView() string {
+	return lipgloss.NewStyle().Foreground(lipgloss.Color("241")).Render("\n ↑/↓: navigate options • a: select/deselect option • enter: move to next/complete • q: quit\n")
+}
+
 func (m Form) View() string {
-	return containerStyle.Render(
-		lipgloss.JoinVertical(
-			lipgloss.Left,
-			titleStyle.Render("Create new download"),
-			formStyle.Render(
-				lipgloss.JoinVertical(lipgloss.Left,
-					m.videoId.View(),
-					m.outputName.View(),
-					m.audioFormat.View(),
+	return lipgloss.JoinVertical(lipgloss.Left,
+
+		containerStyle.Render(
+			lipgloss.JoinVertical(
+				lipgloss.Left,
+				titleStyle.Render("Create new download"),
+				formStyle.Render(
+					lipgloss.JoinVertical(lipgloss.Left,
+						m.videoId.View(),
+						m.outputName.View(),
+						m.audioFormat.View(),
+					),
+				),
+				titleStyle.Render("Youtube-dl options"),
+				formStyle.Render(
+					lipgloss.JoinVertical(lipgloss.Left,
+						optionsViewStyle.Render(
+							m.choicesView(),
+						),
+					),
 				),
 			),
-			titleStyle.Render("Youtube-dl options"),
-			formStyle.Render(
-				lipgloss.JoinVertical(lipgloss.Left,
-					m.choicesView(),
-				),
-			),
+		),
+		helpContainerStyle.Render(
+			m.formHelpView(),
 		),
 	)
 }
