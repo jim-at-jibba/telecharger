@@ -11,11 +11,9 @@ import (
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/list"
 	"github.com/charmbracelet/bubbles/spinner"
-	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/jim-at-jibba/telecharger/data"
-	"github.com/muesli/reflow/wordwrap"
 )
 
 const useHighPerformanceRenderer = false
@@ -25,6 +23,7 @@ type status int
 const (
 	queued status = iota
 	done
+	downloading
 )
 
 /* MODEL MANAGMENT */
@@ -60,7 +59,6 @@ type model struct {
 	focused          status
 	queueItemDetails QueueItem
 	doneItemDetails  QueueItem
-	viewport         viewport.Model
 	downloadOutput   string
 	startingDownload bool
 	spinner          spinner.Model
@@ -109,18 +107,18 @@ func InitialModel() model {
 }
 
 func (m *model) Next() {
-	if m.focused == queued {
-		m.focused = done
-	} else {
+	if m.focused == downloading {
 		m.focused = queued
+	} else {
+		m.focused++
 	}
 }
 
 func (m *model) Prev() {
 	if m.focused == queued {
-		m.focused = done
+		m.focused = downloading
 	} else {
-		m.focused = queued
+		m.focused--
 	}
 }
 
@@ -135,6 +133,11 @@ func (m *model) initLists(width, height int) {
 		fmt.Println(err.Error())
 	}
 
+	downloadingItems, err := data.GetAllQueueItems("downloading")
+	if err != nil {
+		fmt.Println(err.Error())
+	}
+
 	d := list.NewDefaultDelegate()
 
 	c := lipgloss.Color("6")
@@ -143,7 +146,7 @@ func (m *model) initLists(width, height int) {
 
 	defaultList := list.New([]list.Item{}, d, width-10, height/5)
 	defaultList.SetShowHelp(false)
-	m.lists = []list.Model{defaultList, defaultList}
+	m.lists = []list.Model{defaultList, defaultList, defaultList}
 
 	queueItemsList := []list.Item{}
 	for _, item := range queueItems {
@@ -170,6 +173,20 @@ func (m *model) initLists(width, height int) {
 				audioFormat:    item.AudioFormat,
 			})
 	}
+
+	downloadingItemsList := []list.Item{}
+	for _, item := range downloadingItems {
+		downloadingItemsList = append(downloadingItemsList,
+			QueueItem{
+				id:             item.Id,
+				videoId:        item.VideoId,
+				outputName:     item.OutputName,
+				embedThumbnail: item.EmbedThumbnail,
+				audioOnly:      item.AudioOnly,
+				audioFormat:    item.AudioFormat,
+			})
+	}
+
 	m.lists[queued].Styles.Title = ListTitle
 	m.lists[queued].Styles.ActivePaginationDot = lipgloss.NewStyle().Foreground(lipgloss.Color("7"))
 	m.lists[queued].Title = "Queued"
@@ -179,6 +196,11 @@ func (m *model) initLists(width, height int) {
 	m.lists[done].Styles.ActivePaginationDot = lipgloss.NewStyle().Foreground(lipgloss.Color("7"))
 	m.lists[done].Title = "Done"
 	m.lists[done].SetItems(doneItemsList)
+
+	m.lists[downloading].Styles.Title = ListTitle
+	m.lists[downloading].Styles.ActivePaginationDot = lipgloss.NewStyle().Foreground(lipgloss.Color("7"))
+	m.lists[downloading].Title = "Download status"
+	m.lists[downloading].SetItems(downloadingItemsList)
 }
 
 type KeyMap struct {
@@ -287,21 +309,15 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			FocusedStyle.Height(msg.Height / 5)
 			FocusedStyle.Width(msg.Width - 10)
 			m.initLists(msg.Width, msg.Height)
-			m.viewport = viewport.New(msg.Width, msg.Height/7)
-			m.viewport.HighPerformanceRendering = useHighPerformanceRenderer
-			m.viewport.SetContent(m.downloadOutput)
 			m.ready = true
 
-		} else {
-			m.viewport.Width = msg.Width
-			m.viewport.Height = msg.Height / 7
 		}
 
 	case downloadFinished:
 		m.downloadOutput = msg.content
 		m.startingDownload = false
+		m.initLists(m.width, m.height)
 
-		m.viewport.SetContent(wordwrap.String(m.downloadOutput, m.width/widthDivisor-10))
 	}
 	if m.ready {
 		currList, cmd := m.lists[m.focused].Update(msg)
@@ -309,8 +325,6 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		cmds = append(cmds, cmd)
 	}
 	m.spinner, cmd = m.spinner.Update(msg)
-	cmds = append(cmds, cmd)
-	m.viewport, cmd = m.viewport.Update(msg)
 	cmds = append(cmds, cmd)
 	return m, tea.Batch(cmds...)
 }
@@ -348,6 +362,10 @@ func (m model) doneView() string {
 	return ListViewStyle.Render(m.lists[done].View())
 }
 
+func (m model) downloadingView() string {
+	return ListViewStyle.Render(m.lists[downloading].View())
+}
+
 func (m model) queueItemDetailsView() string {
 	videoId := fmt.Sprintf("Video Id: %s", m.queueItemDetails.videoId)
 	outputName := fmt.Sprintf("Outname: %s", m.queueItemDetails.outputName)
@@ -378,23 +396,6 @@ func (m model) doneItemDetailsView() string {
 			audioOnly,
 		),
 	)
-}
-
-func (m model) footerView() string {
-	info := DetailsViewStyle.Render(fmt.Sprintf("%3.f%%", m.viewport.ScrollPercent()*100))
-	return lipgloss.JoinHorizontal(lipgloss.Center, info)
-}
-
-func (m model) viewportView() string {
-	var info string
-	if m.startingDownload && m.downloadOutput == "" {
-		info = fmt.Sprintf("\n\n   %s Downloading...\n\n", m.spinner.View())
-	} else {
-		info = lipgloss.JoinVertical(lipgloss.Left, m.viewport.View(),
-			m.footerView(),
-		)
-	}
-	return lipgloss.JoinHorizontal(lipgloss.Center, info)
 }
 
 func (m model) helpView() string {
@@ -433,14 +434,11 @@ func (m model) View() string {
 						),
 					),
 				),
+				ContainerStyle.Width(oneWide).Render(
+					m.downloadingView(),
+				),
 				HelpContainerStyle.Width(oneWide).Render(
 					m.helpView(),
-				),
-				ContainerStyle.Width(oneWide).Render(
-					lipgloss.JoinVertical(lipgloss.Left,
-						TitleStyle.Render("Download status"),
-						m.viewportView(),
-					),
 				),
 			)
 		case done:
@@ -463,14 +461,38 @@ func (m model) View() string {
 						),
 					),
 				),
+				ContainerStyle.Width(oneWide).Render(
+					m.downloadingView(),
+				),
 				HelpContainerStyle.Width(oneWide).Render(
 					m.helpView(),
 				),
-				ContainerStyle.Width(oneWide).Render(
-					lipgloss.JoinVertical(lipgloss.Left,
-						TitleStyle.Render("Download status"),
-						m.viewportView(),
+			)
+		case downloading:
+			return lipgloss.JoinVertical(lipgloss.Left,
+				m.nameView(),
+				lipgloss.JoinHorizontal(lipgloss.Left,
+
+					ContainerStyle.Width(twoWide).Render(
+						lipgloss.JoinVertical(lipgloss.Left,
+							m.queueView(),
+							TitleStyle.Render("Details"),
+							m.queueItemDetailsView(),
+						),
 					),
+					ContainerStyle.Width(twoWide).Render(
+						lipgloss.JoinVertical(lipgloss.Left,
+							m.doneView(),
+							TitleStyle.Render("Details"),
+							m.doneItemDetailsView(),
+						),
+					),
+				),
+				FocusedStyle.Width(oneWide).Render(
+					m.downloadingView(),
+				),
+				HelpContainerStyle.Width(oneWide).Render(
+					m.helpView(),
 				),
 			)
 		}
