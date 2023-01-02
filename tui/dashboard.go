@@ -49,7 +49,7 @@ type QueueItem struct {
 }
 
 func (i QueueItem) Title() string       { return i.outputName }
-func (i QueueItem) Description() string { return i.outputName }
+func (i QueueItem) Description() string { return i.videoId }
 func (i QueueItem) FilterValue() string { return i.outputName }
 
 type model struct {
@@ -176,11 +176,17 @@ func (m *model) initLists(width, height int) {
 
 	downloadingItemsList := []list.Item{}
 	for _, item := range downloadingItems {
+		var outputSymbol string
+		if item.Status == "downloading" {
+			outputSymbol = "📀"
+		} else if item.Status == "error" {
+			outputSymbol = "❌"
+		}
 		downloadingItemsList = append(downloadingItemsList,
 			QueueItem{
 				id:             item.Id,
 				videoId:        item.VideoId,
-				outputName:     item.OutputName,
+				outputName:     fmt.Sprintf("%s %s", outputSymbol, item.OutputName),
 				embedThumbnail: item.EmbedThumbnail,
 				audioOnly:      item.AudioOnly,
 				audioFormat:    item.AudioFormat,
@@ -317,8 +323,8 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.downloadOutput = msg.content
 		m.startingDownload = false
 		m.initLists(m.width, m.height)
-
 	}
+
 	if m.ready {
 		currList, cmd := m.lists[m.focused].Update(msg)
 		m.lists[m.focused] = currList
