@@ -405,7 +405,7 @@ func (m model) doneItemDetailsView() string {
 }
 
 func (m model) helpView() string {
-	return lipgloss.NewStyle().Foreground(lipgloss.Color("241")).Render("\n ↑/↓: navigate • ←/→: swap lists • c: create entry • d: download entry • q: quit\n")
+	return lipgloss.NewStyle().Foreground(lipgloss.Color("241")).Render("\n ↑/↓: navigate • ←/→: swap lists • c: create entry • d: download entry • q: quit\n 📀: downloading • ❌ error\n")
 }
 
 func (m model) View() string {
