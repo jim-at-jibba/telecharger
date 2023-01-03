@@ -7,6 +7,7 @@ import (
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	"github.com/jim-at-jibba/telecharger/data"
 )
 
 /* FORM MODEL */
@@ -77,13 +78,23 @@ func NewQueuedItem(videoId, outputName, audioFormat string, embedThumbnail, audi
 }
 
 func (m FormModel) CreateQueuedItem() tea.Msg {
-	// TODO: Create a new task
+	s := m.boolChoices
+	containsEmbed, _ := contains(s, 0)
+	containsAudioOnly, _ := contains(s, 1)
 	task := NewQueuedItem(
 		m.videoId.Value(),
 		m.outputName.Value(),
 		m.audioFormat.Value(),
-		true,
-		true,
+		containsEmbed,
+		containsAudioOnly,
+	)
+
+	_ = data.InsertQueueItem(
+		m.videoId.Value(),
+		m.outputName.Value(),
+		m.audioFormat.Value(),
+		containsEmbed,
+		containsAudioOnly,
 	)
 	return task
 }

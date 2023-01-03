@@ -53,21 +53,37 @@ func CreateQueueTable() {
 	}
 }
 
-func InsertQueueItem(word, definition, category string) {
-	insertNoteSQL := `INSERT INTO studybuddy(word, definition, category) VALUES (?, ?, ?)`
+func InsertQueueItem(videoId, outputName, audioFormat string, embedThumbnail, audioOnly bool) error {
+	insertNoteSQL := `INSERT INTO queue(videoId, outputName, audioFormat, embedThumbnail, audioOnly, status) VALUES (?, ?, ?, ?, ?, ?)`
 	statement, err := db.Prepare(insertNoteSQL)
 	if err != nil {
 		log.Fatalln(err)
 	}
 
-	_, err = statement.Exec(word, definition, category)
+	_, err = statement.Exec(videoId, outputName, audioFormat, embedThumbnail, audioOnly, "queued")
+	if err != nil {
+		log.Fatalln(err)
+		return err
+	}
+
+	return nil
+}
+
+func UpdateQueueItemStatus(id int, status string) error {
+	insertNoteSQL := `UPDATE queue SET Status = ? WHERE id = ?`
+	statement, err := db.Prepare(insertNoteSQL)
 	if err != nil {
 		log.Fatalln(err)
 	}
 
-	log.Println("Inserted study note successfully")
-}
+	_, err = statement.Exec(status, id)
+	if err != nil {
+		log.Fatalln(err)
+		return err
+	}
 
+	return nil
+}
 func GetAllQueueItems(status string) ([]*QueueItem, error) {
 	row, err := db.Query("SELECT * FROM queue WHERE Status = $1", status)
 	if err != nil {

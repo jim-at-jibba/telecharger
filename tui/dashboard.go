@@ -59,6 +59,7 @@ type model struct {
 	focused          status
 	queueItemDetails QueueItem
 	doneItemDetails  QueueItem
+	downloadingItem  QueueItem
 	downloadOutput   string
 	startingDownload bool
 	spinner          spinner.Model
@@ -71,10 +72,11 @@ type downloadFinished struct {
 	content string
 }
 
-func (m model) executeDownload() tea.Cmd {
+func (m model) executeDownload(item QueueItem) tea.Cmd {
+
 	return func() tea.Msg {
 		// command := `youtube-dl https://www.youtube.com/watch?v=J38Yq85ZoyY`
-		cmd := exec.Command("youtube-dl", "-x", "https://www.youtube.com/watch?v=J38Yq85ZoyY") //nolint:gosec
+		cmd := exec.Command("youtube-dl", "-x", item.videoId) //nolint:gosec
 		rescueStdout := os.Stdout
 		r, w, _ := os.Pipe()
 		os.Stdout = w
@@ -89,9 +91,11 @@ func (m model) executeDownload() tea.Cmd {
 
 		m.downloadOutput = string(out)
 		if err != nil {
+			data.UpdateQueueItemStatus(item.id, "error")
 			fmt.Println(err)
 		}
 
+		data.UpdateQueueItemStatus(item.id, "completed")
 		return downloadFinished{
 			content: string(out),
 		}
@@ -274,7 +278,11 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case key.Matches(msg, DefaultKeyMap.Quit):
 			return m, tea.Quit
 		case key.Matches(msg, DefaultKeyMap.Download):
-			return m, m.executeDownload()
+			selectedItem := m.lists[m.focused].SelectedItem()
+			item := selectedItem.(QueueItem)
+			data.UpdateQueueItemStatus(item.id, "downloading")
+			m.initLists(m.width, m.height)
+			return m, m.executeDownload(item)
 		case key.Matches(msg, DefaultKeyMap.Create):
 			Models[Info] = m
 			Models[Form] = NewForm()
