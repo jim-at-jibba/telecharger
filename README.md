@@ -22,6 +22,11 @@ go install github.com/jim-at-jibba/telecharger@latest
 telecharger
 ```
 
+## Todo
+
+- [ ] Figure out how to stream output from download to viewport
+- [ ] Add more options to form
+
 ## Author
 
 👤 **James Best**
