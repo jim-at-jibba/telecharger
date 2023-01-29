@@ -6,6 +6,7 @@ import (
 	"math"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strconv"
 
 	"github.com/charmbracelet/bubbles/key"
@@ -338,6 +339,15 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					}
 					for _, item := range downloadingItems {
 						data.UpdateQueueItemStatus(item.Id, "queued")
+					}
+					files, err := filepath.Glob("*.part")
+					if err != nil {
+						fmt.Println("Error finding part downloaded files")
+					}
+					for _, f := range files {
+						if err := os.Remove(f); err != nil {
+							fmt.Println("Error removing part downloaded files")
+						}
 					}
 					return m, tea.Quit
 				} else {
