@@ -2,7 +2,9 @@ package data
 
 import (
 	"database/sql"
+	"fmt"
 	"log"
+	"os"
 
 	_ "github.com/mattn/go-sqlite3"
 )
@@ -23,7 +25,27 @@ var db *sql.DB
 func OpenDatabase() error {
 	var err error
 
-	db, err = sql.Open("sqlite3", "./sqlite-database.db")
+	if len(os.Getenv("DEBUG")) > 0 {
+		db, err = sql.Open("sqlite3", "./sqlite-database-dev.db")
+	} else {
+		dirname, err := os.UserHomeDir()
+		if err != nil {
+			log.Fatal(err)
+		}
+		path := fmt.Sprintf("%s/telecharger", dirname)
+		if _, err := os.Stat(path); os.IsNotExist(err) {
+			err := os.Mkdir(path, os.ModePerm)
+			if err != nil {
+				log.Print(err.Error())
+			}
+		}
+
+		db, err = sql.Open("sqlite3", fmt.Sprintf("%s/sqlite-database.db", path))
+		if err != nil {
+			log.Print(err.Error())
+			return err
+		}
+	}
 	if err != nil {
 		log.Print(err.Error())
 		return err
