@@ -1,4 +1,4 @@
-<h1 align="center">Welcome to telecharger 👋</h1>
+<h1 align="center">Welcome to telecharger</h1>
 <p>
   <a href="https://www.npmjs.com/package/telecharger" target="_blank">
     <img alt="Version" src="https://img.shields.io/npm/v/telecharger.svg">
@@ -9,6 +9,13 @@
 </p>
 
 > Youtube DL TUI
+
+![Dashboard](./assets/telecharger-dashboard.jpg)
+![Form](./assets/telecharger-form.jpg)
+
+Telecharger is a [Youtube-DL](https://github.com/ytdl-org/youtube-dl/blob/master) TUI. It provides the ability to build lists of videos you wish to download, rename the files, saving as audio only and a host of other functionality.
+
+Not all the flags that youtube-dl allows are supported yet but you can provide them as a string on the form and telecharger will sort the rest out for you.
 
 ## Install
 
