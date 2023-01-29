@@ -17,10 +17,6 @@ import (
 	"github.com/jim-at-jibba/telecharger/data"
 )
 
-const (
-	useHighPerformanceRenderer = false
-)
-
 type status int
 
 const (
@@ -67,7 +63,6 @@ type model struct {
 	focused          status
 	queueItemDetails QueueItem
 	doneItemDetails  QueueItem
-	downloadingItem  QueueItem
 	downloadOutput   string
 	startingDownload bool
 	spinner          spinner.Model
