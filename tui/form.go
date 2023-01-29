@@ -62,18 +62,20 @@ type FormModel struct {
 	videoId         textinput.Model
 	outputName      textinput.Model
 	audioFormat     textinput.Model
+	extraCommands   textinput.Model
 	choosingOptions bool
 	choice          option
 	boolChoices     []option
 }
 
-func NewQueuedItem(videoId, outputName, audioFormat string, embedThumbnail, audioOnly bool) QueueItem {
+func NewQueuedItem(videoId, outputName, audioFormat, extraCommands string, embedThumbnail, audioOnly bool) QueueItem {
 	return QueueItem{
 		videoId:        videoId,
 		outputName:     outputName,
 		embedThumbnail: embedThumbnail,
 		audioOnly:      audioOnly,
 		audioFormat:    audioFormat,
+		extraCommands:  extraCommands,
 	}
 }
 
@@ -85,6 +87,7 @@ func (m FormModel) CreateQueuedItem() tea.Msg {
 		m.videoId.Value(),
 		m.outputName.Value(),
 		m.audioFormat.Value(),
+		m.extraCommands.Value(),
 		containsEmbed,
 		containsAudioOnly,
 	)
@@ -93,6 +96,7 @@ func (m FormModel) CreateQueuedItem() tea.Msg {
 		m.videoId.Value(),
 		m.outputName.Value(),
 		m.audioFormat.Value(),
+		m.extraCommands.Value(),
 		containsEmbed,
 		containsAudioOnly,
 	)
@@ -109,6 +113,8 @@ func NewForm() *FormModel {
 	form.outputName.Placeholder = "New name"
 	form.audioFormat = textinput.New()
 	form.audioFormat.Placeholder = "Audio Format (mp3, m4a)"
+	form.extraCommands = textinput.New()
+	form.extraCommands.Placeholder = "Add extra commands not currently cupported by telegrapher"
 	return form
 }
 
@@ -143,6 +149,9 @@ func (m FormModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, textinput.Blink
 			} else if m.audioFormat.Focused() {
 				m.audioFormat.Blur()
+				m.extraCommands.Focus()
+			} else if m.extraCommands.Focused() {
+				m.extraCommands.Blur()
 				m.choosingOptions = true
 				m.choice = embedThumbnail
 			} else {
@@ -188,6 +197,9 @@ func (m FormModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, cmd
 	} else if m.audioFormat.Focused() {
 		m.audioFormat, cmd = m.audioFormat.Update(msg)
+		return m, cmd
+	} else if m.extraCommands.Focused() {
+		m.extraCommands, cmd = m.extraCommands.Update(msg)
 		return m, cmd
 	}
 
@@ -235,6 +247,7 @@ func (m FormModel) View() string {
 						m.videoId.View(),
 						m.outputName.View(),
 						m.audioFormat.View(),
+						m.extraCommands.View(),
 					),
 				),
 				TitleStyle.Render("Youtube-dl options"),

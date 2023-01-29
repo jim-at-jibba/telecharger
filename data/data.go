@@ -14,6 +14,7 @@ type QueueItem struct {
 	EmbedThumbnail bool
 	AudioOnly      bool
 	AudioFormat    string
+	ExtraCommands  string
 	Status         string
 }
 
@@ -39,7 +40,8 @@ func CreateQueueTable() {
 		"EmbedThumbnail" BOOL NOT NULL,
 		"AudioOnly" BOOL NOT NULL,
     "AudioFormat" TEXT NOT NULL,
-    "Status" TEXT NOT NULL
+    "Status" TEXT NOT NULL,
+    "ExtraCommands" TEXT NOT NULL
 	  );`
 
 	statement, err := db.Prepare(createTableSQL)
@@ -53,14 +55,14 @@ func CreateQueueTable() {
 	}
 }
 
-func InsertQueueItem(videoId, outputName, audioFormat string, embedThumbnail, audioOnly bool) error {
-	insertNoteSQL := `INSERT INTO queue(videoId, outputName, audioFormat, embedThumbnail, audioOnly, status) VALUES (?, ?, ?, ?, ?, ?)`
+func InsertQueueItem(videoId, outputName, audioFormat, extraCommnds string, embedThumbnail, audioOnly bool) error {
+	insertNoteSQL := `INSERT INTO queue(videoId, outputName, audioFormat, extraCommands, embedThumbnail, audioOnly, status) VALUES (?, ?, ?, ?, ?, ?, ?)`
 	statement, err := db.Prepare(insertNoteSQL)
 	if err != nil {
 		log.Fatalln(err)
 	}
 
-	_, err = statement.Exec(videoId, outputName, audioFormat, embedThumbnail, audioOnly, "queued")
+	_, err = statement.Exec(videoId, outputName, audioFormat, extraCommnds, embedThumbnail, audioOnly, "queued")
 	if err != nil {
 		log.Fatalln(err)
 		return err
@@ -105,6 +107,7 @@ func GetAllQueueItems(status string) ([]*QueueItem, error) {
 			&queueItem.AudioOnly,
 			&queueItem.AudioFormat,
 			&queueItem.Status,
+			&queueItem.ExtraCommands,
 		)
 
 		queueItems = append(queueItems, &queueItem)

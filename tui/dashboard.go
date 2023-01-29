@@ -8,6 +8,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strconv"
+	"strings"
 
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/list"
@@ -50,6 +51,7 @@ type QueueItem struct {
 	embedThumbnail bool
 	audioOnly      bool
 	audioFormat    string
+	extraCommands  string
 }
 
 func (i QueueItem) Title() string       { return i.outputName }
@@ -80,15 +82,45 @@ type downloadFinished struct {
 func (m model) executeDownload(item QueueItem) tea.Cmd {
 
 	return func() tea.Msg {
-		// command := `youtube-dl https://www.youtube.com/watch?v=J38Yq85ZoyY`
-		cmd := exec.Command("youtube-dl", "-x", item.videoId) //nolint:gosec
+		args := []string{}
+
+		if item.audioOnly {
+			args = append(args, "-x")
+			args = append(args, "--audio-format")
+			if len(item.audioFormat) > 0 {
+				args = append(args, item.audioFormat)
+			} else {
+				args = append(args, "m4a")
+			}
+		}
+
+		if len(item.extraCommands) > 0 {
+			s := strings.Split(item.extraCommands, " ")
+			args = append(args, s...)
+		}
+
+		if item.embedThumbnail {
+			args = append(args, "--embed-thumbnail")
+		}
+
+		if len(item.outputName) > 0 {
+			args = append(args, "-o")
+			args = append(args, fmt.Sprintf("%s.%%(ext)s", item.outputName))
+		}
+		args = append(args, item.videoId)
+		cmd := exec.Command("youtube-dl", args...) //nolint:gosec
 		rescueStdout := os.Stdout
 		r, w, _ := os.Pipe()
 		os.Stdout = w
 
 		cmd.Stdin = os.Stdin
 		cmd.Stdout = os.Stdout
+		// cmd.Stderr = os.Stderr
 		err := cmd.Run()
+		// if err != nil {
+		// 	data.UpdateQueueItemStatus(item.id, "error")
+		// 	fmt.Println(err)
+		// }
 
 		w.Close()
 		out, _ := io.ReadAll(r)
@@ -185,6 +217,7 @@ func (m *model) initLists(width, height int) {
 				embedThumbnail: item.EmbedThumbnail,
 				audioOnly:      item.AudioOnly,
 				audioFormat:    item.AudioFormat,
+				extraCommands:  item.ExtraCommands,
 			})
 	}
 
@@ -198,6 +231,7 @@ func (m *model) initLists(width, height int) {
 				embedThumbnail: item.EmbedThumbnail,
 				audioOnly:      item.AudioOnly,
 				audioFormat:    item.AudioFormat,
+				extraCommands:  item.ExtraCommands,
 			})
 	}
 
@@ -217,6 +251,7 @@ func (m *model) initLists(width, height int) {
 				embedThumbnail: item.EmbedThumbnail,
 				audioOnly:      item.AudioOnly,
 				audioFormat:    item.AudioFormat,
+				extraCommands:  item.ExtraCommands,
 			})
 	}
 
@@ -362,6 +397,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 						embedThumbnail: item.embedThumbnail,
 						audioOnly:      item.audioOnly,
 						audioFormat:    item.audioFormat,
+						extraCommands:  item.extraCommands,
 					}
 				case done:
 					m.doneItemDetails = QueueItem{
@@ -371,6 +407,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 						embedThumbnail: item.embedThumbnail,
 						audioOnly:      item.audioOnly,
 						audioFormat:    item.audioFormat,
+						extraCommands:  item.extraCommands,
 					}
 				}
 			}
