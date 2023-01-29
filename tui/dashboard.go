@@ -1,6 +1,7 @@
 package tui
 
 import (
+	"bufio"
 	"fmt"
 	"io"
 	"math"
@@ -13,10 +14,14 @@ import (
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/list"
 	"github.com/charmbracelet/bubbles/spinner"
+	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/jim-at-jibba/telecharger/data"
+	"github.com/muesli/reflow/wordwrap"
 )
+
+const useHighPerformanceRenderer = false
 
 type status int
 
@@ -66,6 +71,7 @@ type model struct {
 	queueItemDetails QueueItem
 	doneItemDetails  QueueItem
 	downloadOutput   string
+	viewport         viewport.Model
 	startingDownload bool
 	spinner          spinner.Model
 	quitting         bool
@@ -76,6 +82,10 @@ type model struct {
 }
 
 type downloadFinished struct {
+	content string
+}
+
+type downloadingStatusUpdate struct {
 	content string
 }
 
@@ -109,32 +119,45 @@ func (m model) executeDownload(item QueueItem) tea.Cmd {
 		}
 		args = append(args, item.videoId)
 		cmd := exec.Command("youtube-dl", args...) //nolint:gosec
-		rescueStdout := os.Stdout
-		r, w, _ := os.Pipe()
-		os.Stdout = w
+		stdout, _ := cmd.StdoutPipe()
+		stderr, _ := cmd.StderrPipe()
+		_ = cmd.Start()
 
-		cmd.Stdin = os.Stdin
-		cmd.Stdout = os.Stdout
-		// cmd.Stderr = os.Stderr
-		err := cmd.Run()
+		scanner := bufio.NewScanner(io.MultiReader(stdout, stderr))
+		scanner.Split(bufio.ScanWords)
+		for scanner.Scan() {
+			t := scanner.Text()
+			// fmt.Println(t)
+			// m.downloadOutput = t
+			P.Send(downloadingStatusUpdate{content: t})
+		}
+		// _ = cmd.Wait()
+		// rescueStdout := os.Stdout
+		// r, w, _ := os.Pipe()
+		// os.Stdout = w
+		//
+		// cmd.Stdin = os.Stdin
+		// cmd.Stdout = os.Stdout
+		// // cmd.Stderr = os.Stderr
+		// err := cmd.Run()
+		// // if err != nil {
+		// // 	data.UpdateQueueItemStatus(item.id, "error")
+		// // 	fmt.Println(err)
+		// // }
+		//
+		// w.Close()
+		// out, _ := io.ReadAll(r)
+		// os.Stdout = rescueStdout
+		//
+		// m.downloadOutput = string(out)
 		// if err != nil {
 		// 	data.UpdateQueueItemStatus(item.id, "error")
 		// 	fmt.Println(err)
 		// }
 
-		w.Close()
-		out, _ := io.ReadAll(r)
-		os.Stdout = rescueStdout
-
-		m.downloadOutput = string(out)
-		if err != nil {
-			data.UpdateQueueItemStatus(item.id, "error")
-			fmt.Println(err)
-		}
-
 		data.UpdateQueueItemStatus(item.id, "completed")
 		return downloadFinished{
-			content: string(out),
+			// content: string(out),
 		}
 	}
 }
@@ -424,13 +447,24 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			FocusedStyle.Height(msg.Height / 5)
 			FocusedStyle.Width(msg.Width - 10)
 			m.initLists(msg.Width, msg.Height)
+			m.viewport = viewport.New(msg.Width, msg.Height/7)
+			m.viewport.HighPerformanceRendering = useHighPerformanceRenderer
+			m.viewport.SetContent(m.downloadOutput)
 			m.ready = true
 
+		} else {
+			m.viewport.Width = msg.Width
+			m.viewport.Height = msg.Height / 7
 		}
+
+	case downloadingStatusUpdate:
+		m.downloadOutput = msg.content
+		m.viewport.SetContent(wordwrap.String(m.downloadOutput, m.width/widthDivisor-10))
 
 	case downloadFinished:
 		m.downloadOutput = msg.content
 		// fmt.Println(m.downloadOutput)
+		// m.viewport.SetContent(wordwrap.String(m.downloadOutput, m.width/widthDivisor-10))
 		m.startingDownload = false
 		m.initLists(m.width, m.height)
 	}
@@ -441,6 +475,9 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		cmds = append(cmds, cmd)
 	}
 	m.spinner, cmd = m.spinner.Update(msg)
+	// m.setViewportContent()
+	cmds = append(cmds, cmd)
+	m.viewport, cmd = m.viewport.Update(msg)
 	cmds = append(cmds, cmd)
 	return m, tea.Batch(cmds...)
 }
@@ -543,6 +580,11 @@ func (m model) dialogView() string {
 	return dialog
 }
 
+func (m model) footerView() string {
+	info := DetailsViewStyle.Render(fmt.Sprintf("%3.f%%", m.viewport.ScrollPercent()*100))
+	return lipgloss.JoinHorizontal(lipgloss.Center, info)
+}
+
 func (m model) View() string {
 	twoWide := int(math.Floor(float64(m.width-10) / 2))
 	oneWide := int(float64(m.width - 8))
@@ -584,6 +626,9 @@ func (m model) View() string {
 				ContainerStyle.Width(oneWide).Render(
 					m.downloadingView(),
 				),
+				ContainerStyle.Width(oneWide).Render(
+					TitleStyle.Render(m.downloadOutput),
+				),
 				HelpContainerStyle.Width(oneWide).Render(
 					m.helpView(),
 				),
@@ -607,6 +652,9 @@ func (m model) View() string {
 							m.doneItemDetailsView(),
 						),
 					),
+				),
+				ContainerStyle.Width(oneWide).Render(
+					TitleStyle.Render(m.downloadOutput),
 				),
 				ContainerStyle.Width(oneWide).Render(
 					m.downloadingView(),
@@ -637,6 +685,9 @@ func (m model) View() string {
 				),
 				FocusedStyle.Width(oneWide).Render(
 					m.downloadingView(),
+				),
+				ContainerStyle.Width(oneWide).Render(
+					TitleStyle.Render(m.downloadOutput),
 				),
 				HelpContainerStyle.Width(oneWide).Render(
 					m.helpView(),

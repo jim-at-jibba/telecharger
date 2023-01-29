@@ -22,9 +22,9 @@ func main() {
 	}
 	tui.Models = []tea.Model{tui.InitialModel(), tui.NewForm()}
 	m := tui.Models[tui.Info]
-	p := tea.NewProgram(m)
+	tui.P = tea.NewProgram(m)
 
-	if _, err := p.Run(); err != nil {
+	if _, err := tui.P.Run(); err != nil {
 		fmt.Println(err)
 		os.Exit(1)
 	}
