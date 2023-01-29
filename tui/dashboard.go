@@ -16,7 +16,9 @@ import (
 	"github.com/jim-at-jibba/telecharger/data"
 )
 
-const useHighPerformanceRenderer = false
+const (
+	useHighPerformanceRenderer = false
+)
 
 type status int
 
@@ -32,6 +34,11 @@ var Models []tea.Model
 const (
 	Info status = iota
 	Form
+)
+
+const (
+	yes status = iota
+	no
 )
 
 var widthDivisor = 2
@@ -66,6 +73,8 @@ type model struct {
 	quitting         bool
 	err              error
 	ready            bool
+	blockExit        bool
+	dialogChoice     status
 }
 
 type downloadFinished struct {
@@ -102,12 +111,14 @@ func (m model) executeDownload(item QueueItem) tea.Cmd {
 	}
 }
 
-func InitialModel() model {
-	s := spinner.New()
-	s.Spinner = spinner.Dot
-	s.Style = lipgloss.NewStyle().Foreground(lipgloss.Color("205"))
+func InitialModel() *model {
+	// s := spinner.New()
+	// s.Spinner = spinner.Dot
+	// s.Style = lipgloss.NewStyle().Foreground(lipgloss.Color("205"))
 
-	return model{spinner: s}
+	return &model{
+		dialogChoice: 0,
+	}
 }
 
 func (m *model) Next() {
@@ -123,6 +134,22 @@ func (m *model) Prev() {
 		m.focused = downloading
 	} else {
 		m.focused--
+	}
+}
+
+func (m *model) PrevDialogChoice() {
+	if m.dialogChoice == no {
+		m.dialogChoice = yes
+	} else {
+		m.dialogChoice--
+	}
+}
+
+func (m *model) NextDialogChoice() {
+	if m.dialogChoice == yes {
+		m.dialogChoice = no
+	} else {
+		m.dialogChoice++
 	}
 }
 
@@ -259,11 +286,11 @@ var DefaultKeyMap = KeyMap{
 	),
 }
 
-func (m model) Init() tea.Cmd {
+func (m *model) Init() tea.Cmd {
 	return m.spinner.Tick
 }
 
-func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var (
 		cmd  tea.Cmd
 		cmds []tea.Cmd
@@ -272,11 +299,26 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.KeyMsg:
 		switch {
 		case key.Matches(msg, DefaultKeyMap.Left):
-			m.Prev()
+			if m.blockExit {
+				m.PrevDialogChoice()
+			} else {
+				m.Prev()
+			}
 		case key.Matches(msg, DefaultKeyMap.Right):
-			m.Next()
+			if m.blockExit {
+				m.NextDialogChoice()
+			} else {
+				m.Next()
+			}
 		case key.Matches(msg, DefaultKeyMap.Quit):
-			return m, tea.Quit
+			fmt.Println(len(m.lists[downloading].Items()))
+			if len(m.lists[downloading].Items()) > 0 {
+				m.blockExit = true
+				return m, nil
+			} else {
+				return m, tea.Quit
+
+			}
 		case key.Matches(msg, DefaultKeyMap.Download):
 			selectedItem := m.lists[m.focused].SelectedItem()
 			item := selectedItem.(QueueItem)
@@ -288,26 +330,43 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			Models[Form] = NewForm()
 			return Models[Form].Update(nil)
 		case key.Matches(msg, DefaultKeyMap.Enter):
-			selectedItem := m.lists[m.focused].SelectedItem()
-			item := selectedItem.(QueueItem)
-			switch m.focused {
-			case queued:
-				m.queueItemDetails = QueueItem{
-					id:             item.id,
-					videoId:        item.videoId,
-					outputName:     item.outputName,
-					embedThumbnail: item.embedThumbnail,
-					audioOnly:      item.audioOnly,
-					audioFormat:    item.audioFormat,
+			if m.blockExit {
+				if m.dialogChoice == yes {
+					downloadingItems, err := data.GetAllQueueItems("downloading")
+					if err != nil {
+						fmt.Println(err.Error())
+					}
+					for _, item := range downloadingItems {
+						data.UpdateQueueItemStatus(item.Id, "queued")
+					}
+					return m, tea.Quit
+				} else {
+					m.blockExit = false
+					return m, nil
 				}
-			case done:
-				m.doneItemDetails = QueueItem{
-					id:             item.id,
-					videoId:        item.videoId,
-					outputName:     item.outputName,
-					embedThumbnail: item.embedThumbnail,
-					audioOnly:      item.audioOnly,
-					audioFormat:    item.audioFormat,
+
+			} else {
+				selectedItem := m.lists[m.focused].SelectedItem()
+				item := selectedItem.(QueueItem)
+				switch m.focused {
+				case queued:
+					m.queueItemDetails = QueueItem{
+						id:             item.id,
+						videoId:        item.videoId,
+						outputName:     item.outputName,
+						embedThumbnail: item.embedThumbnail,
+						audioOnly:      item.audioOnly,
+						audioFormat:    item.audioFormat,
+					}
+				case done:
+					m.doneItemDetails = QueueItem{
+						id:             item.id,
+						videoId:        item.videoId,
+						outputName:     item.outputName,
+						embedThumbnail: item.embedThumbnail,
+						audioOnly:      item.audioOnly,
+						audioFormat:    item.audioFormat,
+					}
 				}
 			}
 		}
@@ -329,6 +388,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case downloadFinished:
 		m.downloadOutput = msg.content
+		// fmt.Println(m.downloadOutput)
 		m.startingDownload = false
 		m.initLists(m.width, m.height)
 	}
@@ -416,6 +476,31 @@ func (m model) helpView() string {
 	return lipgloss.NewStyle().Foreground(lipgloss.Color("241")).Render("\n ↑/↓: navigate • ←/→: swap lists • c: create entry • d: download entry • q: quit\n 📀: downloading • ❌ error\n")
 }
 
+func (m model) dialogView() string {
+	var (
+		okButton, cancelButton string
+	)
+
+	if m.dialogChoice == yes {
+		okButton = ActiveLeftButtonStyle.Render("Yes")
+		cancelButton = ButtonStyle.Render("No")
+	} else {
+		okButton = ButtonStyle.Render("Yes")
+		cancelButton = ActiveRightButtonStyle.Render("No")
+
+	}
+
+	question := lipgloss.NewStyle().Width(50).Align(lipgloss.Center).Render("You are currently downloading items.\nAre you sure you want to exit?")
+	buttons := lipgloss.JoinHorizontal(lipgloss.Top, okButton, cancelButton)
+	ui := lipgloss.JoinVertical(lipgloss.Center, question, buttons)
+
+	dialog := lipgloss.Place(m.width, 9,
+		lipgloss.Center, lipgloss.Center,
+		DialogBoxStyle.Render(ui),
+	)
+	return dialog
+}
+
 func (m model) View() string {
 	twoWide := int(math.Floor(float64(m.width-10) / 2))
 	oneWide := int(float64(m.width - 8))
@@ -424,6 +509,12 @@ func (m model) View() string {
 	}
 	if m.quitting {
 		return "Exiting...\n"
+	}
+
+	if m.blockExit {
+		return ContainerStyleNoBorder.Width(oneWide).Render(
+			m.dialogView(),
+		)
 	}
 
 	if m.ready {

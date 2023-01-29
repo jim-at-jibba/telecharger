@@ -26,6 +26,7 @@ telecharger
 
 - [ ] Figure out how to stream output from download to viewport
 - [ ] Add more options to form
+- [ ] Figure out better way to do focus state, rather than duplicating views
 
 ## Author
 
