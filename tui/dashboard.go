@@ -79,6 +79,17 @@ type downloadFinished struct {
 	content string
 }
 
+func NewQueuedItem(videoId, outputName, audioFormat, extraCommands string, embedThumbnail, audioOnly bool) QueueItem {
+	return QueueItem{
+		videoId:        videoId,
+		outputName:     outputName,
+		embedThumbnail: embedThumbnail,
+		audioOnly:      audioOnly,
+		audioFormat:    audioFormat,
+		extraCommands:  extraCommands,
+	}
+}
+
 func (m model) executeDownload(item QueueItem) tea.Cmd {
 
 	return func() tea.Msg {
@@ -305,7 +316,7 @@ var DefaultKeyMap = KeyMap{
 	),
 	Download: key.NewBinding(
 		key.WithKeys("d"),
-		key.WithHelp("↓/j", "start download"),
+		key.WithHelp("d", "start download"),
 	),
 	Enter: key.NewBinding(
 		key.WithKeys("enter"),
@@ -415,6 +426,9 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case errMsg:
 		m.err = msg
 		return m, nil
+
+	case QueueItem:
+		m.initLists(m.width, m.height)
 
 	case tea.WindowSizeMsg:
 		if !m.ready {
