@@ -8,12 +8,12 @@
   </a>
 </p>
 
-> Telecharger is a [Youtube-DL](https://github.com/ytdl-org/youtube-dl/blob/master) TUI
+> Telecharger is a [Youtube-DL](https://github.com/ytdl-org/youtube-dl) TUI
 
 ![Dashboard](./assets/telecharger-dashboard.jpg)
 ![Form](./assets/telecharger-form.jpg)
 
-Telecharger is a [Youtube-DL](https://github.com/ytdl-org/youtube-dl/blob/master) TUI. It provides the ability to build lists of videos you wish to download, rename the files, saving as audio only and a host of other functionality.
+Telecharger is a [Youtube-DL](https://github.com/ytdl-org/youtube-dl) TUI. It provides the ability to build lists of videos you wish to download, rename the files, saving as audio only and a host of other functionality.
 
 Not all the flags that youtube-dl allows are supported yet but you can provide them as a string on the form and telecharger will sort the rest out for you.
 
