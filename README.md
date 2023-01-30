@@ -8,7 +8,7 @@
   </a>
 </p>
 
-> Youtube DL TUI
+> Telecharger is a [Youtube-DL](https://github.com/ytdl-org/youtube-dl/blob/master) TUI
 
 ![Dashboard](./assets/telecharger-dashboard.jpg)
 ![Form](./assets/telecharger-form.jpg)
