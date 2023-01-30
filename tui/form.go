@@ -68,17 +68,6 @@ type FormModel struct {
 	boolChoices     []option
 }
 
-func NewQueuedItem(videoId, outputName, audioFormat, extraCommands string, embedThumbnail, audioOnly bool) QueueItem {
-	return QueueItem{
-		videoId:        videoId,
-		outputName:     outputName,
-		embedThumbnail: embedThumbnail,
-		audioOnly:      audioOnly,
-		audioFormat:    audioFormat,
-		extraCommands:  extraCommands,
-	}
-}
-
 func (m FormModel) CreateQueuedItem() tea.Msg {
 	s := m.boolChoices
 	containsEmbed, _ := contains(s, 0)
@@ -159,7 +148,8 @@ func (m FormModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return Models[Info], m.CreateQueuedItem
 			}
 		case key.Matches(msg, DefaultFormKeyMap.Quit):
-			return m, tea.Quit
+			Models[Form] = m
+			return Models[Info], nil
 		case key.Matches(msg, DefaultFormKeyMap.Down):
 			if !m.choosingOptions {
 				return m, nil
