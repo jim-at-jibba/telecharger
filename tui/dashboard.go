@@ -392,6 +392,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					for _, item := range downloadingItems {
 						data.UpdateQueueItemStatus(item.Id, "queued")
 					}
+					// delete all associated files
 					files, err := filepath.Glob("*.part")
 					if err != nil {
 						fmt.Println("Error finding part downloaded files")
