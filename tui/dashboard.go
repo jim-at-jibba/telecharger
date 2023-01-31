@@ -289,6 +289,7 @@ type KeyMap struct {
 	Right    key.Binding
 	Quit     key.Binding
 	Download key.Binding
+	Delete   key.Binding
 	Enter    key.Binding
 	Create   key.Binding
 }
@@ -314,9 +315,13 @@ var DefaultKeyMap = KeyMap{
 		key.WithKeys("q", "ctrl+c"),
 		key.WithHelp("q/ctrl+c", "quit"),
 	),
-	Download: key.NewBinding(
+	Delete: key.NewBinding(
 		key.WithKeys("d"),
-		key.WithHelp("d", "start download"),
+		key.WithHelp("d", "delete download"),
+	),
+	Download: key.NewBinding(
+		key.WithKeys("s"),
+		key.WithHelp("s", "start download"),
 	),
 	Enter: key.NewBinding(
 		key.WithKeys("enter"),
@@ -367,6 +372,12 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			data.UpdateQueueItemStatus(item.id, "downloading")
 			m.initLists(m.width, m.height)
 			return m, m.executeDownload(item)
+		case key.Matches(msg, DefaultKeyMap.Delete):
+			selectedItem := m.lists[m.focused].SelectedItem()
+			item := selectedItem.(QueueItem)
+			data.DeleteQueueItem(item.id)
+			m.initLists(m.width, m.height)
+			return m, nil
 		case key.Matches(msg, DefaultKeyMap.Create):
 			Models[Info] = m
 			Models[Form] = NewForm()
@@ -529,7 +540,7 @@ func (m model) doneItemDetailsView() string {
 }
 
 func (m model) helpView() string {
-	return lipgloss.NewStyle().Foreground(lipgloss.Color("241")).Render("\n ↑/↓: navigate • ←/→: swap lists • c: create entry • d: download entry • q: quit\n 📀: downloading • ❌ error\n")
+	return lipgloss.NewStyle().Foreground(lipgloss.Color("241")).Render("\n ↑/↓: navigate • ←/→: swap lists • c: create entry • s: start download • d: download entry • q: quit\n 📀: downloading • ❌ error\n")
 }
 
 func (m model) dialogView() string {

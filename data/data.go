@@ -108,6 +108,23 @@ func UpdateQueueItemStatus(id int, status string) error {
 
 	return nil
 }
+
+func DeleteQueueItem(id int) error {
+	deleteItemSQL := `DELETE FROM queue WHERE id = ?`
+	statement, err := db.Prepare(deleteItemSQL)
+	if err != nil {
+		log.Fatalln(err)
+	}
+
+	_, err = statement.Exec(id)
+	if err != nil {
+		log.Fatalln(err)
+		return err
+	}
+
+	return nil
+}
+
 func GetAllQueueItems(status string) ([]*QueueItem, error) {
 	row, err := db.Query("SELECT * FROM queue WHERE Status = $1", status)
 	if err != nil {
