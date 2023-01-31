@@ -312,8 +312,8 @@ var DefaultKeyMap = KeyMap{
 		key.WithHelp("→", "move right"),
 	),
 	Quit: key.NewBinding(
-		key.WithKeys("q", "ctrl+c"),
-		key.WithHelp("q/ctrl+c", "quit"),
+		key.WithKeys("ctrl+c"),
+		key.WithHelp("ctrl+c", "quit"),
 	),
 	Delete: key.NewBinding(
 		key.WithKeys("d"),
@@ -541,7 +541,7 @@ func (m model) doneItemDetailsView() string {
 }
 
 func (m model) helpView() string {
-	return lipgloss.NewStyle().Foreground(lipgloss.Color("241")).Render("\n ↑/↓: navigate • ←/→: swap lists • c: create entry • s: start download • d: download entry • q: quit\n 📀: downloading • ❌ error\n")
+	return lipgloss.NewStyle().Foreground(lipgloss.Color("241")).Render("\n ↑/↓: navigate • ←/→: swap lists • c: create entry • s: start download • d: download entry • ctrl+c: quit\n 📀: downloading • ❌ error\n")
 }
 
 func (m model) dialogView() string {
