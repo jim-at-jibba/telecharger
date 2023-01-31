@@ -26,6 +26,11 @@ Adding the following extra commands
 
 The SQLite database is created in a `telecharger` directory in your home directory. In the future config will likely live here too.
 
+## Requirements
+
+- [Youtube-DL](https://github.com/ytdl-org/youtube-dl)
+- [FFMPEG](https://ffmpeg.org/)
+
 **Warning**
 
 I have not tested this on windows and doubt it will work there. Sorry.
