@@ -295,20 +295,20 @@ type KeyMap struct {
 
 var DefaultKeyMap = KeyMap{
 	Up: key.NewBinding(
-		key.WithKeys("k", "up"),
-		key.WithHelp("↑/k", "move up"),
+		key.WithKeys("up"),
+		key.WithHelp("↑", "move up"),
 	),
 	Down: key.NewBinding(
-		key.WithKeys("j", "down"),
-		key.WithHelp("↓/j", "move down"),
+		key.WithKeys("down"),
+		key.WithHelp("↓", "move down"),
 	),
 	Left: key.NewBinding(
-		key.WithKeys("h", "left"),
-		key.WithHelp("←/h", "move left"),
+		key.WithKeys("left"),
+		key.WithHelp("←", "move left"),
 	),
 	Right: key.NewBinding(
-		key.WithKeys("l", "right"),
-		key.WithHelp("→/l", "move right"),
+		key.WithKeys("right"),
+		key.WithHelp("→", "move right"),
 	),
 	Quit: key.NewBinding(
 		key.WithKeys("q", "ctrl+c"),

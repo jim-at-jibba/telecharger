@@ -34,12 +34,12 @@ var DefaultFormKeyMap = FormKeyMap{
 		key.WithHelp("esc", "go back"),
 	),
 	Up: key.NewBinding(
-		key.WithKeys("k", "up"),
-		key.WithHelp("↑/k", "move up"),
+		key.WithKeys("up"),
+		key.WithHelp("↑", "move up"),
 	),
 	Down: key.NewBinding(
-		key.WithKeys("j", "down"),
-		key.WithHelp("↓/j", "move down"),
+		key.WithKeys("down"),
+		key.WithHelp("↓", "move down"),
 	),
 	Enter: key.NewBinding(
 		key.WithKeys("enter"),
