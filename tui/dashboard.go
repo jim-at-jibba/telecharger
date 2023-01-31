@@ -312,8 +312,8 @@ var DefaultKeyMap = KeyMap{
 		key.WithHelp("→", "move right"),
 	),
 	Quit: key.NewBinding(
-		key.WithKeys("ctrl+c"),
-		key.WithHelp("ctrl+c", "quit"),
+		key.WithKeys("q", "ctrl+c"),
+		key.WithHelp("q/ctrl+c", "quit"),
 	),
 	Delete: key.NewBinding(
 		key.WithKeys("d"),
@@ -373,6 +373,9 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.initLists(m.width, m.height)
 			return m, m.executeDownload(item)
 		case key.Matches(msg, DefaultKeyMap.Delete):
+			if m.focused != queued {
+				return m, nil
+			}
 			selectedItem := m.lists[m.focused].SelectedItem()
 			item := selectedItem.(QueueItem)
 			data.DeleteQueueItem(item.id)
@@ -541,7 +544,7 @@ func (m model) doneItemDetailsView() string {
 }
 
 func (m model) helpView() string {
-	return lipgloss.NewStyle().Foreground(lipgloss.Color("241")).Render("\n ↑/↓: navigate • ←/→: swap lists • c: create entry • s: start download • d: download entry • ctrl+c: quit\n 📀: downloading • ❌ error\n")
+	return lipgloss.NewStyle().Foreground(lipgloss.Color("241")).Render("\n ↑/↓: navigate • ←/→: swap lists • c: create entry • s: start download • d: download entry • q/ctrl+c: quit\n 📀: downloading • ❌ error\n")
 }
 
 func (m model) dialogView() string {
