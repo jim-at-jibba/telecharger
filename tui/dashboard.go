@@ -45,7 +45,7 @@ const (
 )
 
 var widthDivisor = 2
-var version = "0.0.2"
+var version = "0.0.5"
 
 type errMsg error
 
@@ -312,34 +312,39 @@ type KeyMap struct {
 	Right    key.Binding
 	Quit     key.Binding
 	Download key.Binding
+	Delete   key.Binding
 	Enter    key.Binding
 	Create   key.Binding
 }
 
 var DefaultKeyMap = KeyMap{
 	Up: key.NewBinding(
-		key.WithKeys("k", "up"),
-		key.WithHelp("↑/k", "move up"),
+		key.WithKeys("up"),
+		key.WithHelp("↑", "move up"),
 	),
 	Down: key.NewBinding(
-		key.WithKeys("j", "down"),
-		key.WithHelp("↓/j", "move down"),
+		key.WithKeys("down"),
+		key.WithHelp("↓", "move down"),
 	),
 	Left: key.NewBinding(
-		key.WithKeys("h", "left"),
-		key.WithHelp("←/h", "move left"),
+		key.WithKeys("left"),
+		key.WithHelp("←", "move left"),
 	),
 	Right: key.NewBinding(
-		key.WithKeys("l", "right"),
-		key.WithHelp("→/l", "move right"),
+		key.WithKeys("right"),
+		key.WithHelp("→", "move right"),
 	),
 	Quit: key.NewBinding(
 		key.WithKeys("q", "ctrl+c"),
 		key.WithHelp("q/ctrl+c", "quit"),
 	),
-	Download: key.NewBinding(
+	Delete: key.NewBinding(
 		key.WithKeys("d"),
-		key.WithHelp("d", "start download"),
+		key.WithHelp("d", "delete download"),
+	),
+	Download: key.NewBinding(
+		key.WithKeys("s"),
+		key.WithHelp("s", "start download"),
 	),
 	Enter: key.NewBinding(
 		key.WithKeys("enter"),
@@ -390,6 +395,15 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			data.UpdateQueueItemStatus(item.id, "downloading")
 			m.initLists(m.width, m.height)
 			return m, m.executeDownload(item)
+		case key.Matches(msg, DefaultKeyMap.Delete):
+			if m.focused != queued {
+				return m, nil
+			}
+			selectedItem := m.lists[m.focused].SelectedItem()
+			item := selectedItem.(QueueItem)
+			data.DeleteQueueItem(item.id)
+			m.initLists(m.width, m.height)
+			return m, nil
 		case key.Matches(msg, DefaultKeyMap.Create):
 			Models[Info] = m
 			Models[Form] = NewForm()
@@ -404,6 +418,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					for _, item := range downloadingItems {
 						data.UpdateQueueItemStatus(item.Id, "queued")
 					}
+					// delete all associated files
 					files, err := filepath.Glob("*.part")
 					if err != nil {
 						fmt.Println("Error finding part downloaded files")
@@ -566,7 +581,7 @@ func (m model) doneItemDetailsView() string {
 }
 
 func (m model) helpView() string {
-	return lipgloss.NewStyle().Foreground(lipgloss.Color("241")).Render("\n ↑/↓: navigate • ←/→: swap lists • c: create entry • d: download entry • q: quit\n 📀: downloading • ❌ error\n")
+	return lipgloss.NewStyle().Foreground(lipgloss.Color("241")).Render("\n ↑/↓: navigate • ←/→: swap lists • c: create entry • s: start download • d: download entry • q/ctrl+c: quit\n 📀: downloading • ❌ error\n")
 }
 
 func (m model) dialogView() string {

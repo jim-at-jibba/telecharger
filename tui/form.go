@@ -22,8 +22,8 @@ type FormKeyMap struct {
 
 var DefaultFormKeyMap = FormKeyMap{
 	Quit: key.NewBinding(
-		key.WithKeys("q", "ctrl+c"),
-		key.WithHelp("q/ctrl+c", "quit"),
+		key.WithKeys("ctrl+c"),
+		key.WithHelp("ctrl+c", "quit"),
 	),
 	Tab: key.NewBinding(
 		key.WithKeys("tab"),
@@ -34,12 +34,12 @@ var DefaultFormKeyMap = FormKeyMap{
 		key.WithHelp("esc", "go back"),
 	),
 	Up: key.NewBinding(
-		key.WithKeys("k", "up"),
-		key.WithHelp("↑/k", "move up"),
+		key.WithKeys("up"),
+		key.WithHelp("↑", "move up"),
 	),
 	Down: key.NewBinding(
-		key.WithKeys("j", "down"),
-		key.WithHelp("↓/j", "move down"),
+		key.WithKeys("down"),
+		key.WithHelp("↓", "move down"),
 	),
 	Enter: key.NewBinding(
 		key.WithKeys("enter"),
@@ -222,7 +222,7 @@ func (m FormModel) choicesView() string {
 }
 
 func (m FormModel) formHelpView() string {
-	return lipgloss.NewStyle().Foreground(lipgloss.Color("241")).Render("\n ↑/↓: navigate options • enter: select/deselect option • tab: move to next/complete • q: quit\n")
+	return lipgloss.NewStyle().Foreground(lipgloss.Color("241")).Render("\n ↑/↓: navigate options • enter: select/deselect option • tab: move to next/complete • ctrl+c: quit\n")
 }
 
 func (m FormModel) View() string {
