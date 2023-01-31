@@ -17,6 +17,16 @@ Telecharger is a [Youtube-DL](https://github.com/ytdl-org/youtube-dl) TUI. It pr
 
 Not all the flags that youtube-dl allows are supported yet but you can provide them as a string on the form and telecharger will sort the rest out for you.
 
+<details>
+  <summary>Example</summary>
+
+Adding the following extra commands
+
+`--add-metadata --write-all-thumbnails --embed-thumbnail --write-info-json --embed-subs --all-subs`
+![Example commnds](./assets/telecharger-extra-commands.gif)
+
+</details>
+
 The SQLite database is created in a `telecharger` directory in your home directory. In the future config will likely live here too.
 
 **Warning**
