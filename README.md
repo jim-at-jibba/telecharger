@@ -53,6 +53,7 @@ telecharger
 - [ ] Add more options to form
 - [ ] Figure out better way to do focus state, rather than duplicating views
 - [x] Add ability to delete queued items
+- [ ] Populate details when item is selected
 - [ ] Add terminal notify to success/error events
 - [ ] limit done query to 10 items
 
