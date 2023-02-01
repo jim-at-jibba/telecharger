@@ -49,7 +49,8 @@ telecharger
 
 ## Todo
 
-- [ ] Figure out how to stream output from download to viewport
+- [x] Figure out how to stream output from download to viewport
+- [ ] Allow multiple downloads at once
 - [ ] Add more options to form
 - [ ] Figure out better way to do focus state, rather than duplicating views
 - [x] Add ability to delete queued items
