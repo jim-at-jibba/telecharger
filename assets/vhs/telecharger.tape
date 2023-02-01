@@ -65,6 +65,6 @@ Sleep 2s
 Tab 1
 Sleep 2s
 Type "s" Sleep 500ms
-Sleep 5s
+Sleep 10s
 
 
