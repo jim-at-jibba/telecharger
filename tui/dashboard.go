@@ -18,7 +18,6 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/jim-at-jibba/telecharger/data"
-	"github.com/muesli/reflow/wordwrap"
 )
 
 const useHighPerformanceRenderer = false
@@ -71,6 +70,7 @@ type model struct {
 	queueItemDetails QueueItem
 	doneItemDetails  QueueItem
 	downloadOutput   string
+	currentDownload  QueueItem
 	viewport         viewport.Model
 	startingDownload bool
 	spinner          spinner.Model
@@ -140,7 +140,9 @@ func (m model) executeDownload(item QueueItem) tea.Cmd {
 			t := scanner.Text()
 			// fmt.Println(t)
 			// m.downloadOutput = t
-			P.Send(downloadingStatusUpdate{content: t})
+			if strings.Contains(t, "%") {
+				P.Send(downloadingStatusUpdate{content: t})
+			}
 		}
 		// _ = cmd.Wait()
 		// rescueStdout := os.Stdout
@@ -393,6 +395,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			selectedItem := m.lists[m.focused].SelectedItem()
 			item := selectedItem.(QueueItem)
 			data.UpdateQueueItemStatus(item.id, "downloading")
+			m.currentDownload = item
 			m.initLists(m.width, m.height)
 			return m, m.executeDownload(item)
 		case key.Matches(msg, DefaultKeyMap.Delete):
@@ -488,7 +491,6 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case downloadingStatusUpdate:
 		m.downloadOutput = msg.content
-		m.viewport.SetContent(wordwrap.String(m.downloadOutput, m.width/widthDivisor-10))
 
 	case downloadFinished:
 		m.downloadOutput = msg.content
@@ -580,6 +582,24 @@ func (m model) doneItemDetailsView() string {
 	)
 }
 
+func (m model) downloadingItemDetailsView() string {
+	progress := fmt.Sprintf("Progress: %s", m.downloadOutput)
+	videoId := fmt.Sprintf("Video Id: %s", m.currentDownload.videoId)
+	outputName := fmt.Sprintf("Outname: %s", m.currentDownload.outputName)
+	audioFormat := fmt.Sprintf("AudioFormat: %s", m.currentDownload.audioFormat)
+	audioOnly := fmt.Sprintf("AudioOnly: %s", strconv.FormatBool(m.currentDownload.audioOnly))
+	return DetailsViewStyle.Render(
+		lipgloss.JoinVertical(
+			lipgloss.Left,
+			progress,
+			outputName,
+			videoId,
+			audioFormat,
+			audioOnly,
+		),
+	)
+}
+
 func (m model) helpView() string {
 	return lipgloss.NewStyle().Foreground(lipgloss.Color("241")).Render("\n ↑/↓: navigate • ←/→: swap lists • c: create entry • s: start download • d: download entry • q/ctrl+c: quit\n 📀: downloading • ❌ error\n")
 }
@@ -653,10 +673,10 @@ func (m model) View() string {
 					),
 				),
 				ContainerStyle.Width(oneWide).Render(
-					m.downloadingView(),
-				),
-				ContainerStyle.Width(oneWide).Render(
-					TitleStyle.Render(m.downloadOutput),
+					lipgloss.JoinVertical(lipgloss.Left,
+						TitleStyle.Render("Download status"),
+						m.downloadingItemDetailsView(),
+					),
 				),
 				HelpContainerStyle.Width(oneWide).Render(
 					m.helpView(),
@@ -683,10 +703,10 @@ func (m model) View() string {
 					),
 				),
 				ContainerStyle.Width(oneWide).Render(
-					TitleStyle.Render(m.downloadOutput),
-				),
-				ContainerStyle.Width(oneWide).Render(
-					m.downloadingView(),
+					lipgloss.JoinVertical(lipgloss.Left,
+						TitleStyle.Render("Download status"),
+						m.downloadingItemDetailsView(),
+					),
 				),
 				HelpContainerStyle.Width(oneWide).Render(
 					m.helpView(),
@@ -712,11 +732,11 @@ func (m model) View() string {
 						),
 					),
 				),
-				FocusedStyle.Width(oneWide).Render(
-					m.downloadingView(),
-				),
 				ContainerStyle.Width(oneWide).Render(
-					TitleStyle.Render(m.downloadOutput),
+					lipgloss.JoinVertical(lipgloss.Left,
+						TitleStyle.Render("Download status"),
+						m.downloadingItemDetailsView(),
+					),
 				),
 				HelpContainerStyle.Width(oneWide).Render(
 					m.helpView(),
