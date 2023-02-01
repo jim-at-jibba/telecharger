@@ -13,6 +13,7 @@ import (
 
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/list"
+	"github.com/charmbracelet/bubbles/progress"
 	"github.com/charmbracelet/bubbles/spinner"
 	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
@@ -20,7 +21,11 @@ import (
 	"github.com/jim-at-jibba/telecharger/data"
 )
 
-const useHighPerformanceRenderer = false
+const (
+	useHighPerformanceRenderer = false
+	padding                    = 2
+	maxWidth                   = 80
+)
 
 type status int
 
@@ -71,8 +76,9 @@ type model struct {
 	doneItemDetails  QueueItem
 	downloadOutput   string
 	currentDownload  QueueItem
+	progress         progress.Model
 	viewport         viewport.Model
-	startingDownload bool
+	downloading      bool
 	spinner          spinner.Model
 	quitting         bool
 	err              error
@@ -82,7 +88,7 @@ type model struct {
 }
 
 type downloadFinished struct {
-	content string
+	finished bool
 }
 
 type downloadingStatusUpdate struct {
@@ -138,50 +144,22 @@ func (m model) executeDownload(item QueueItem) tea.Cmd {
 		scanner.Split(bufio.ScanWords)
 		for scanner.Scan() {
 			t := scanner.Text()
-			// fmt.Println(t)
-			// m.downloadOutput = t
 			if strings.Contains(t, "%") {
 				P.Send(downloadingStatusUpdate{content: t})
 			}
 		}
-		// _ = cmd.Wait()
-		// rescueStdout := os.Stdout
-		// r, w, _ := os.Pipe()
-		// os.Stdout = w
-		//
-		// cmd.Stdin = os.Stdin
-		// cmd.Stdout = os.Stdout
-		// // cmd.Stderr = os.Stderr
-		// err := cmd.Run()
-		// // if err != nil {
-		// // 	data.UpdateQueueItemStatus(item.id, "error")
-		// // 	fmt.Println(err)
-		// // }
-		//
-		// w.Close()
-		// out, _ := io.ReadAll(r)
-		// os.Stdout = rescueStdout
-		//
-		// m.downloadOutput = string(out)
-		// if err != nil {
-		// 	data.UpdateQueueItemStatus(item.id, "error")
-		// 	fmt.Println(err)
-		// }
 
 		data.UpdateQueueItemStatus(item.id, "completed")
 		return downloadFinished{
-			// content: string(out),
+			finished: true,
 		}
 	}
 }
 
 func InitialModel() *model {
-	// s := spinner.New()
-	// s.Spinner = spinner.Dot
-	// s.Style = lipgloss.NewStyle().Foreground(lipgloss.Color("205"))
-
 	return &model{
 		dialogChoice: 0,
+		progress:     progress.New(progress.WithDefaultGradient()),
 	}
 }
 
@@ -392,12 +370,18 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 			}
 		case key.Matches(msg, DefaultKeyMap.Download):
-			selectedItem := m.lists[m.focused].SelectedItem()
-			item := selectedItem.(QueueItem)
-			data.UpdateQueueItemStatus(item.id, "downloading")
-			m.currentDownload = item
-			m.initLists(m.width, m.height)
-			return m, m.executeDownload(item)
+			// block multiple downloads
+			if m.downloading {
+				return m, nil
+			} else {
+				selectedItem := m.lists[m.focused].SelectedItem()
+				item := selectedItem.(QueueItem)
+				data.UpdateQueueItemStatus(item.id, "downloading")
+				m.downloading = true
+				m.currentDownload = item
+				m.initLists(m.width, m.height)
+				return m, m.executeDownload(item)
+			}
 		case key.Matches(msg, DefaultKeyMap.Delete):
 			if m.focused != queued {
 				return m, nil
@@ -412,6 +396,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			Models[Form] = NewForm()
 			return Models[Form].Update(nil)
 		case key.Matches(msg, DefaultKeyMap.Enter):
+			// Haanling enter when in dialog view
 			if m.blockExit {
 				if m.dialogChoice == yes {
 					downloadingItems, err := data.GetAllQueueItems("downloading")
@@ -436,8 +421,8 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					m.blockExit = false
 					return m, nil
 				}
-
 			} else {
+				// Haanling enter when in dashboard view
 				selectedItem := m.lists[m.focused].SelectedItem()
 				item := selectedItem.(QueueItem)
 				switch m.focused {
@@ -468,6 +453,11 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.err = msg
 		return m, nil
 
+	case progress.FrameMsg:
+		progressModel, cmd := m.progress.Update(msg)
+		m.progress = progressModel.(progress.Model)
+		return m, cmd
+
 	case QueueItem:
 		m.initLists(m.width, m.height)
 
@@ -482,6 +472,10 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.viewport = viewport.New(msg.Width, msg.Height/7)
 			m.viewport.HighPerformanceRendering = useHighPerformanceRenderer
 			m.viewport.SetContent(m.downloadOutput)
+			m.progress.Width = msg.Width - padding*2 - 4
+			if m.progress.Width > maxWidth {
+				m.progress.Width = maxWidth
+			}
 			m.ready = true
 
 		} else {
@@ -491,12 +485,13 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case downloadingStatusUpdate:
 		m.downloadOutput = msg.content
+		percentString := removeLastRune(msg.content)
+		float, _ := strconv.ParseFloat(percentString, 64)
+		cmd := m.progress.SetPercent(float / 100)
+		return m, cmd
 
 	case downloadFinished:
-		m.downloadOutput = msg.content
-		// fmt.Println(m.downloadOutput)
-		// m.viewport.SetContent(wordwrap.String(m.downloadOutput, m.width/widthDivisor-10))
-		m.startingDownload = false
+		m.downloading = false
 		m.initLists(m.width, m.height)
 	}
 
@@ -506,7 +501,6 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		cmds = append(cmds, cmd)
 	}
 	m.spinner, cmd = m.spinner.Update(msg)
-	// m.setViewportContent()
 	cmds = append(cmds, cmd)
 	m.viewport, cmd = m.viewport.Update(msg)
 	cmds = append(cmds, cmd)
@@ -583,7 +577,7 @@ func (m model) doneItemDetailsView() string {
 }
 
 func (m model) downloadingItemDetailsView() string {
-	progress := fmt.Sprintf("Progress: %s", m.downloadOutput)
+	progress := fmt.Sprintf("Progress: %s", m.progress.View())
 	videoId := fmt.Sprintf("Video Id: %s", m.currentDownload.videoId)
 	outputName := fmt.Sprintf("Outname: %s", m.currentDownload.outputName)
 	audioFormat := fmt.Sprintf("AudioFormat: %s", m.currentDownload.audioFormat)
@@ -747,6 +741,11 @@ func (m model) View() string {
 		return "Loading"
 	}
 	return "..."
+}
+
+func removeLastRune(s string) string {
+	r := []rune(s)
+	return string(r[:len(r)-1])
 }
 
 // VIEWS END
