@@ -32,6 +32,7 @@ The SQLite database is created in a `telecharger` directory in your home directo
 - [FFMPEG](https://ffmpeg.org/)
 - For Notifications
   - [MacOS](https://github.com/julienXX/terminal-notifier)
+  - Linux: spd-say should come with your distro
 
 **Warning**
 

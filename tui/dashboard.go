@@ -113,7 +113,8 @@ func notifyMe(item QueueItem) {
 		cmd := exec.Command("terminal-notifier", "-message", "has finished", "-title", item.outputName, "-sound", "Crystal")
 		_ = cmd.Start()
 	case "linux":
-		fmt.Println("Linux")
+		cmd := exec.Command("spd-say", fmt.Sprintf("%s has finished", item.outputName))
+		_ = cmd.Start()
 	default:
 		fmt.Printf("%s.\n", os)
 	}
