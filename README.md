@@ -30,6 +30,8 @@ The SQLite database is created in a `telecharger` directory in your home directo
 
 - [Youtube-DL](https://github.com/ytdl-org/youtube-dl)
 - [FFMPEG](https://ffmpeg.org/)
+- For Notifications
+  - [MacOS](https://github.com/julienXX/terminal-notifier)
 
 **Warning**
 

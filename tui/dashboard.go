@@ -8,6 +8,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strconv"
 	"strings"
 
@@ -105,7 +106,18 @@ func NewQueuedItem(videoId, outputName, audioFormat, extraCommands string, embed
 		extraCommands:  extraCommands,
 	}
 }
-
+func notifyMe(item QueueItem) {
+	os := runtime.GOOS
+	switch os {
+	case "darwin":
+		cmd := exec.Command("terminal-notifier", "-message", "has finished", "-title", item.outputName, "-sound", "Crystal")
+		_ = cmd.Start()
+	case "linux":
+		fmt.Println("Linux")
+	default:
+		fmt.Printf("%s.\n", os)
+	}
+}
 func (m model) executeDownload(item QueueItem) tea.Cmd {
 
 	return func() tea.Msg {
@@ -150,6 +162,7 @@ func (m model) executeDownload(item QueueItem) tea.Cmd {
 		}
 
 		data.UpdateQueueItemStatus(item.id, "completed")
+		notifyMe(item)
 		return downloadFinished{
 			finished: true,
 		}
