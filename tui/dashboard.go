@@ -385,7 +385,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 		case key.Matches(msg, DefaultKeyMap.Download):
 			// block multiple downloads
-			if m.downloading {
+			if m.downloading || len(m.lists[queued].Items()) == 0 {
 				return m, nil
 			} else {
 				selectedItem := m.lists[m.focused].SelectedItem()
@@ -397,7 +397,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, m.executeDownload(item)
 			}
 		case key.Matches(msg, DefaultKeyMap.Delete):
-			if m.focused != queued {
+			if m.focused != queued || len(m.lists[m.focused].Items()) == 0 {
 				return m, nil
 			}
 			selectedItem := m.lists[m.focused].SelectedItem()
@@ -410,6 +410,9 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			Models[Form] = NewForm()
 			return Models[Form].Update(nil)
 		case key.Matches(msg, DefaultKeyMap.Enter):
+			if len(m.lists[m.focused].Items()) == 0 && !m.blockExit {
+				return m, nil
+			}
 			// Haanling enter when in dialog view
 			if m.blockExit {
 				if m.dialogChoice == yes {
