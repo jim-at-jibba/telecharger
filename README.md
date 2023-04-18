@@ -5,12 +5,14 @@
   </a>
 </p>
 
-> Telecharger is a [Youtube-DL](https://github.com/ytdl-org/youtube-dl) TUI
+> NB - Due to issues with youtube-dl, I have made the decsion to switch to `yt-dlp` instead
+
+> Telecharger is a [yt-dlp](https://github.com/yt-dlp/yt-dlp) TUI
 
 ![Dashboard](./assets/telecharger-dashboard.jpg)
 ![Form](./assets/telecharger-form.jpg)
 
-Telecharger is a [Youtube-DL](https://github.com/ytdl-org/youtube-dl) TUI. It provides the ability to build lists of videos you wish to download, rename the files, saving as audio only and a host of other functionality.
+Telecharger is a [yt-dlp](https://github.com/yt-dlp/yt-dlp) TUI. It provides the ability to build lists of videos you wish to download, rename the files, saving as audio only and a host of other functionality.
 
 Not all the flags that youtube-dl allows are supported yet but you can provide them as a string on the form and telecharger will sort the rest out for you.
 
@@ -28,7 +30,7 @@ The SQLite database is created in a `telecharger` directory in your home directo
 
 ## Requirements
 
-- [Youtube-DL](https://github.com/ytdl-org/youtube-dl)
+- [yt-dlp](https://github.com/yt-dlp/yt-dlp)
 - [FFMPEG](https://ffmpeg.org/)
 - For Notifications
   - [MacOS](https://github.com/julienXX/terminal-notifier)
@@ -53,12 +55,13 @@ telecharger
 ## Todo
 
 - [x] Figure out how to stream output from download to viewport
+- [ ] Auto start next download
 - [ ] Allow multiple downloads at once
 - [ ] Add more options to form
 - [ ] Figure out better way to do focus state, rather than duplicating views
 - [x] Add ability to delete queued items
 - [ ] Populate details when item is selected
-- [ ] Add terminal notify to success/error events
+- [x] Add terminal notify to success/error events
 - [ ] limit done query to 10 items
 
 ## Author

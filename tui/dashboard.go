@@ -50,7 +50,7 @@ const (
 )
 
 var widthDivisor = 2
-var version = "0.0.7"
+var version = "0.0.6"
 
 type errMsg error
 
@@ -148,7 +148,7 @@ func (m model) executeDownload(item QueueItem) tea.Cmd {
 			args = append(args, fmt.Sprintf("%s.%%(ext)s", item.outputName))
 		}
 		args = append(args, item.videoId)
-		cmd := exec.Command("youtube-dl", args...) //nolint:gosec
+		cmd := exec.Command("yt-dlp", args...) //nolint:gosec
 		stdout, _ := cmd.StdoutPipe()
 		stderr, _ := cmd.StderrPipe()
 		_ = cmd.Start()
