@@ -50,7 +50,7 @@ const (
 )
 
 var widthDivisor = 2
-var version = "0.1.0"
+var version = "0.1.1"
 
 type errMsg error
 
@@ -612,7 +612,7 @@ func (m model) downloadingItemDetailsView() string {
 }
 
 func (m model) helpView() string {
-	return lipgloss.NewStyle().Foreground(lipgloss.Color("241")).Render("\n ↑/↓: navigate • ←/→: swap lists • c: create entry • s: start download • d: download entry • q/ctrl+c: quit\n 📀: downloading • ❌ error\n")
+	return lipgloss.NewStyle().Foreground(lipgloss.Color("241")).Render("\n ↑/↓: navigate • ←/→: swap lists • c: create entry • s: start download • d: delete entry • q/ctrl+c: quit\n 📀: downloading • ❌ error\n")
 }
 
 func (m model) dialogView() string {
