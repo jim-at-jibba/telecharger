@@ -50,7 +50,7 @@ const (
 )
 
 var widthDivisor = 2
-var version = "0.1.1"
+var version = "0.1.2"
 
 type errMsg error
 
@@ -509,7 +509,10 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case downloadFinished:
 		m.downloading = false
+		cmd := m.progress.SetPercent(0)
+		m.currentDownload = QueueItem{}
 		m.initLists(m.width, m.height)
+		return m, cmd
 	}
 
 	if m.ready {
