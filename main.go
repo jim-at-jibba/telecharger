@@ -8,39 +8,20 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/jim-at-jibba/telecharger/data"
 	"github.com/jim-at-jibba/telecharger/tui"
+	util "github.com/jim-at-jibba/telecharger/utils"
 )
 
 func main() {
-	dirname, err := os.UserHomeDir()
+	_, err := util.ParseConfig()
 	if err != nil {
-		log.Fatal(err)
+		log.Println(err)
 	}
-	configPath := fmt.Sprintf("%s/.config/telecharger", dirname)
-	if _, err := os.Stat(configPath); os.IsNotExist(err) {
-		err := os.Mkdir(configPath, os.ModePerm)
-		if err != nil {
-			log.Print(err.Error())
-		}
-	}
-
-	if _, err := os.Stat(fmt.Sprintf("%s/app.env", configPath)); os.IsNotExist(err) {
-		f, err := os.Create(fmt.Sprintf("%s/app.env", configPath))
-		if err != nil {
-			log.Fatal(err)
-		}
-
-		_, err2 := f.WriteString("DOWNLOAD_PATH=.")
-
-		if err2 != nil {
-			log.Fatal(err2)
-		}
-		defer f.Close()
-	}
-
 	data.OpenDatabase()
 	data.CreateQueueTable()
-	if len(os.Getenv("DEBUG")) > 0 {
+
+	if true {
 		f, err := tea.LogToFile("debug.log", "debug")
+		log.Printf("In debug mode")
 		if err != nil {
 			fmt.Println("fatal:", err)
 			os.Exit(1)
