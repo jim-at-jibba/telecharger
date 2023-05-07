@@ -46,6 +46,22 @@ I have not tested this on windows and doubt it will work there. Sorry.
 go install github.com/jim-at-jibba/telecharger@latest
 ```
 
+## Configuration
+
+### Configuration directory
+
+Telescharger stores your configuration at the following path:
+
+- on MacOS: `~/.config/telecharger`
+- on Linux `${XDG_CONFIG_HOME}/telecharger`
+
+If there more configuration options that you would like to see in Telecharge, please submit an issue.
+
+| Option          | Default                           | Description                               |
+| --------------- | --------------------------------- | ----------------------------------------- |
+| enable_logging  | false                             | Enables bubbletea logging                 |
+| download_folder | `.` you current working directory | Set the download location for telecharger |
+
 ## Usage
 
 ```sh
