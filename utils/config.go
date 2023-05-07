@@ -19,7 +19,8 @@ const ConfigFileName = "telecharger.yml"
 
 // SettingsConfig struct represents the config for the settings.
 type SettingsConfig struct {
-	EnableLogging bool `yaml:"enable_logging"`
+	EnableLogging  bool   `yaml:"enable_logging"`
+	DownloadFolder string `yaml:"download_folder"`
 }
 
 // Config represents the main config for the application.
@@ -41,7 +42,8 @@ type ConfigParser struct{}
 func (parser ConfigParser) getDefaultConfig() Config {
 	return Config{
 		Settings: SettingsConfig{
-			EnableLogging: false,
+			EnableLogging:  false,
+			DownloadFolder: ".",
 		},
 	}
 }
@@ -171,7 +173,7 @@ func ParseConfig() (Config, error) {
 	parser := initParser()
 
 	configFilePath, err := parser.getConfigFileOrCreateIfMissing()
-	log.Println(*configFilePath)
+
 	if err != nil {
 		return config, parsingError{err: err}
 	}

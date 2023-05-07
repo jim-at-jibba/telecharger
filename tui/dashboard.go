@@ -20,6 +20,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/jim-at-jibba/telecharger/data"
+	utils "github.com/jim-at-jibba/telecharger/utils"
 )
 
 const (
@@ -86,6 +87,7 @@ type model struct {
 	ready            bool
 	blockExit        bool
 	dialogChoice     status
+	appConfig        utils.Config
 }
 
 type downloadFinished struct {
@@ -120,7 +122,6 @@ func notifyMe(item QueueItem) {
 	}
 }
 func (m model) executeDownload(item QueueItem) tea.Cmd {
-
 	return func() tea.Msg {
 		args := []string{}
 
@@ -145,7 +146,7 @@ func (m model) executeDownload(item QueueItem) tea.Cmd {
 
 		if len(item.outputName) > 0 {
 			args = append(args, "-o")
-			args = append(args, fmt.Sprintf("%s.%%(ext)s", item.outputName))
+			args = append(args, fmt.Sprintf("%s/%s.%%(ext)s", m.appConfig.Settings.DownloadFolder, item.outputName))
 		}
 		args = append(args, item.videoId)
 		cmd := exec.Command("yt-dlp", args...) //nolint:gosec
@@ -170,10 +171,11 @@ func (m model) executeDownload(item QueueItem) tea.Cmd {
 	}
 }
 
-func InitialModel() *model {
+func InitialModel(cfg utils.Config) *model {
 	return &model{
 		dialogChoice: 0,
 		progress:     progress.New(progress.WithDefaultGradient()),
+		appConfig:    cfg,
 	}
 }
 

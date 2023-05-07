@@ -12,14 +12,15 @@ import (
 )
 
 func main() {
-	_, err := util.ParseConfig()
+	cfg, err := util.ParseConfig()
 	if err != nil {
 		log.Println(err)
 	}
+
 	data.OpenDatabase()
 	data.CreateQueueTable()
 
-	if true {
+	if cfg.Settings.EnableLogging {
 		f, err := tea.LogToFile("debug.log", "debug")
 		log.Printf("In debug mode")
 		if err != nil {
@@ -28,7 +29,7 @@ func main() {
 		}
 		defer f.Close()
 	}
-	tui.Models = []tea.Model{tui.InitialModel(), tui.NewForm()}
+	tui.Models = []tea.Model{tui.InitialModel(cfg), tui.NewForm()}
 	m := tui.Models[tui.Info]
 	tui.P = tea.NewProgram(m)
 
