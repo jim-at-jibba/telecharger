@@ -51,7 +51,7 @@ const (
 )
 
 var widthDivisor = 2
-var version = "0.1.3"
+var version = "0.2.0"
 
 type errMsg error
 
