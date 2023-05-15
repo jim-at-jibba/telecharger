@@ -1,5 +1,8 @@
 <h1 align="center">Welcome to telecharger</h1>
 <p>
+  <a href="https://github.com/jim-at-jibba/telecharger/blob/main/LICENSE" target="_blank">
+    <img alt="License: MIT" src="https://img.shields.io/badge/License-MIT-yellow.svg" />
+  </a>
   <a href="https://twitter.com/jimgbest" target="_blank">
     <img alt="Twitter: jimgbest" src="https://img.shields.io/twitter/follow/jimgbest.svg?style=social" />
   </a>
